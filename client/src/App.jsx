@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
-import { useNavigate } from "react-router-dom";
+
 import TakeExam from "./components/Exam/TakeExam";
 import ExamResults from "./components/Exam/ExamResults";
-import ExamAnalytics from "./components/Analytics/ExamAnalytics";
+
 
 function App() {
   
