@@ -1,25 +1,66 @@
 
 import { IoLogOutOutline } from "react-icons/io5";
+import { FaBars, FaTimes, FaHome, FaBook, FaClipboardList } from "react-icons/fa";
 import MyExams from "../components/Dashboard/MyExams";
 import { useState } from "react";
 import EnrolledExams from "../components/Dashboard/EnrolledExams";
 import CreateExam from "../components/Exam/CreateExam";
 import ExamDetails from "../components/Exam/ExamDetails";
-import ExamResults from "../components/Exam/ExamResults";
+
+
 
 export default function Dashboard() {
 
     const [Pagerendering,setPageRendering] = useState ('Dashboard')
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    const toggleSidebar = () => {
+        setSidebarOpen(!sidebarOpen);
+    };
+
+    const closeSidebar = () => {
+        setSidebarOpen(false);
+    };
+
+    const handleNavigation = (page) => {
+        setPageRendering(page);
+        closeSidebar();
+    };
 
     return (
-        <div className="flex  bg-gray-50">
+        <div className="flex bg-gray-50">
     
-           
-            <div className="hidden md:flex md:w-64 lg:flex-col ">
+            {/* Mobile Hamburger Menu Button */}
+            <button
+                onClick={toggleSidebar}
+                className="md:hidden fixed top-4 right-4 z-50 p-2 bg-indigo-600 text-white rounded-lg shadow-lg"
+            >
+                {sidebarOpen ? <FaTimes className="w-6 h-6" /> : <FaBars className="w-6 h-6" />}
+            </button>
+
+            {/* Sidebar Overlay for Mobile */}
+            {sidebarOpen && (
+                <div 
+                    className="md:hidden fixed inset-0 bg-transparent bg-opacity-50 z-30"
+                    onClick={closeSidebar}
+                />
+            )}
+
+            {/* Sidebar */}
+            <div className={`
+                fixed md:relative z-40
+                w-64 
+                bg-white
+                transform transition-transform duration-300 ease-in-out
+                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+                md:translate-x-0 md:flex md:w-64 lg:flex-col
+            `}>
                 
                 <div className="flex flex-col flex-grow pt-5 overflow-y-auto min-h-screen bg-white">
                     
-                    <div className="flex items-center flex-shrink-0 px-4 w-auto"><h1 className="font-[bingo] font-bold text-2xl ">Kingohub</h1></div>
+                    <div className="flex items-center flex-shrink-0 px-4 w-auto">
+                        <h1 className="font-[bingo] font-bold text-2xl ">Kingohub</h1>
+                    </div>
 
                 <div className="px-4 mt-8">
                 <label htmlFor="" className="sr-only">Search</label>
@@ -40,22 +81,49 @@ export default function Dashboard() {
 
 
 
-                <div className="flex flex-col flex-1   px-3 mt-6">
-                    <div  >
+                <div className="flex flex-col flex-1 px-3 mt-6">
+                    <div>
                         <nav className="flex-1 space-y-4">
-                             <a href="#" title="" onClick={()=>{setPageRendering('Dashboard')}} class="flex items-center px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 bg-indigo-600 rounded-lg group">
-                            <svg className="flex-shrink-0 w-5 h-5 mr-4 text-white" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                            </svg>
-                            Dashboard
-                        </a>
+                             <a 
+                                href="#" 
+                                title="" 
+                                onClick={() => handleNavigation('Dashboard')}
+                                className={`flex items-center px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg group ${
+                                    Pagerendering === 'Dashboard' 
+                                        ? 'bg-indigo-600 text-white' 
+                                        : 'text-gray-700 hover:bg-gray-100'
+                                }`}
+                            >
+                                <FaHome className="flex-shrink-0 w-5 h-5 mr-4" />
+                                Dashboard
+                            </a>
 
 
-                        <a onClick={()=>{setPageRendering('Enrolled Exams')}}  title="" className="flex items-center px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 bg-indigo-600 rounded-lg group">
-                            Enrolled Exams
-                        </a>
+                            <a 
+                                onClick={() => handleNavigation('Enrolled Exams')}  
+                                title="" 
+                                className={`flex items-center px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg group ${
+                                    Pagerendering === 'Enrolled Exams' 
+                                        ? 'bg-indigo-600 text-white' 
+                                        : 'text-gray-700 hover:bg-gray-100'
+                                }`}
+                            >
+                                <FaClipboardList className="flex-shrink-0 w-5 h-5 mr-4" />
+                                Enrolled Exams
+                            </a>
 
-                        <a onClick={()=>{setPageRendering('My Exams')}}  title="" className="bg-indigo-600 text-white px-4 py-2.5 flex items-center text-sm font-medium transition-all duration-200  rounded-lg group ">My exams</a>
+                            <a 
+                                onClick={() => handleNavigation('My Exams')}  
+                                title="" 
+                                className={`flex items-center px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg group ${
+                                    Pagerendering === 'My Exams' 
+                                        ? 'bg-indigo-600 text-white' 
+                                        : 'text-gray-700 hover:bg-gray-100'
+                                }`}
+                            >
+                                <FaBook className="flex-shrink-0 w-5 h-5 mr-4" />
+                                My Exams
+                            </a>
                         </nav>
                     </div>
                 </div>
@@ -63,11 +131,10 @@ export default function Dashboard() {
                 
 
 
-               <div className=" px-4 mt-6">
-                 <div  className="flex  mb-6  py-2.5 px-2 text-white rounded-lg items-center  justify-center bg-gray-600/10 space-x-4  group">
+               <div className="px-4 mt-6">
+                 <div className="flex mb-6 py-2.5 px-2 text-white rounded-lg items-center justify-center bg-gray-600/10 space-x-4 group">
                    <a href="#" className="text-black font-medium">
                     Logout
-                    
                    </a>
                    <span>
                     <IoLogOutOutline className="text-red-500 text-lg font-bold"/>
