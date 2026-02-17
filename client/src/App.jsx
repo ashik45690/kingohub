@@ -4,6 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import { useNavigate } from "react-router-dom";
 import TakeExam from "./components/Exam/TakeExam";
 import ExamResults from "./components/Exam/ExamResults";
+import ExamAnalytics from "./components/Analytics/ExamAnalytics";
 
 function App() {
   
@@ -17,7 +18,7 @@ function App() {
       <Route path="/kingohub/Dashboard" element={<Dashboard/>}></Route>
       <Route path="/kingohub/exam" element={<TakeExam/>}></Route>
       <Route path="/kingohub/examresult" element={<ExamResults/>}></Route>
-      
+     
      </Routes>
      </BrowserRouter>
       

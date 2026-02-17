@@ -6,6 +6,7 @@ import { useState } from "react";
 import EnrolledExams from "../components/Dashboard/EnrolledExams";
 import CreateExam from "../components/Exam/CreateExam";
 import ExamDetails from "../components/Exam/ExamDetails";
+import ExamAnalytics from "../components/Analytics/ExamAnalytics";
 
 
 
@@ -154,7 +155,7 @@ export default function Dashboard() {
   (() => {
     switch (Pagerendering) {
       case "Dashboard":
-        return <h1 className="font-bold text-8xl m-28">Welcome Dashboard</h1>;
+        return <ExamAnalytics/>;
 
       case "Enrolled Exams":
         return <EnrolledExams  render ={setPageRendering}/>;
