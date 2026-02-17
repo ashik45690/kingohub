@@ -17,6 +17,7 @@ function App() {
       <Route path="/kingohub/Dashboard" element={<Dashboard/>}></Route>
       <Route path="/kingohub/exam" element={<TakeExam/>}></Route>
       <Route path="/kingohub/examresult" element={<ExamResults/>}></Route>
+      
      </Routes>
      </BrowserRouter>
       

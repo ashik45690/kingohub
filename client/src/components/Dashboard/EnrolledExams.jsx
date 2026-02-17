@@ -237,7 +237,7 @@ export default function EnrolledExams({render}) {
                             className="flex items-center px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors duration-200"
                           >
                            
-                            View Results
+                            <a onClick={()=>{navigate('/kingohub/examresult')}}>View Results</a>
                           </button>
                         )}
                       </div>
