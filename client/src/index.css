@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'bingo';
+  src: url('./assets/fonts/Bingo-Regular.woff2');
+}
