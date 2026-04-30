@@ -1,4 +1,6 @@
+const mongoose = require('mongoose');
 const Submission = require('../models/Submission');
+const Registration = require('../models/Registration');
 const Question = require('../models/Question');
 const Exam = require('../models/Exam');
 const { calculatePercentage, calculateTimeTaken, isExamActive, answerLetterToIndex } = require('../utils/helpers');
@@ -11,6 +13,16 @@ const { calculatePercentage, calculateTimeTaken, isExamActive, answerLetterToInd
 exports.submitExam = async (req, res) => {
     try {
         const { examId, answers, startTime } = req.body;
+        console.log(`[DEBUG] Received submission for examId: ${examId}`);
+        console.log(`[DEBUG] Answers received count: ${answers?.length || 0}`);
+
+        if (!mongoose.Types.ObjectId.isValid(examId)) {
+            return res.status(400).json({ success: false, message: 'Invalid exam ID format' });
+        }
+
+        if (!answers || !Array.isArray(answers) || answers.length === 0) {
+            return res.status(400).json({ success: false, message: 'You must answer at least one question' });
+        }
 
         const exam = await Exam.findById(examId);
         if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
@@ -19,16 +31,29 @@ exports.submitExam = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Exam is not published yet' });
         }
 
-        if (exam.authorizedEmails.length > 0 && !exam.authorizedEmails.includes(req.user.email.toLowerCase())) {
-            return res.status(403).json({ success: false, message: 'You are not authorized to take this exam' });
+        // Check if user is registered
+        const registration = await Registration.findOne({
+            examId,
+            $or: [
+                { userId: req.user.id },
+                { email: req.user.email.toLowerCase() }
+            ]
+        });
+
+        if (!registration) {
+            return res.status(403).json({ success: false, message: 'You must be registered to submit this exam' });
         }
 
-        if (!isExamActive(exam.startDate, exam.endDate)) {
-            return res.status(400).json({ success: false, message: 'Exam is not active' });
+        const now = new Date();
+        const start = new Date(exam.startDate);
+        const end = exam.endDate ? new Date(exam.endDate) : null;
+
+        if (now < start || (end && now > end)) {
+            return res.status(400).json({ success: false, message: 'Submission is not allowed outside exam time window' });
         }
 
-        // Check if user already submitted
-        const existingSubmission = await Submission.findOne({ examId, userId: req.user.id });
+        // Check for existing 'submitted' submission
+        const existingSubmission = await Submission.findOne({ examId, userId: req.user.id, status: 'submitted' });
         if (existingSubmission) {
             return res.status(400).json({ success: false, message: 'You have already submitted this exam' });
         }
@@ -58,21 +83,26 @@ exports.submitExam = async (req, res) => {
             timeTaken = maxSeconds;
         }
 
-        const submission = await Submission.create({
-            examId,
-            userId: req.user.id,
-            answers: processedAnswers,
-            score,
-            totalQuestions,
-            percentage,
-            startTime,
-            submitTime,
-            timeTaken,
-            status: req.body.status || 'submitted'
-        });
+        // Use findOneAndUpdate to handle ongoing attempt or create new one
+        const submission = await Submission.findOneAndUpdate(
+            { examId, userId: req.user.id },
+            {
+                answers: processedAnswers,
+                score,
+                totalQuestions,
+                percentage,
+                startTime: startTime || new Date(),
+                submitTime,
+                timeTaken,
+                status: 'submitted' // Mark as submitted
+            },
+            { new: true, upsert: true }
+        );
 
-        res.status(201).json({ success: true, data: submission });
+        console.log(`[DEBUG] Successfully processed submission for user ${req.user.id}. Score: ${score}/${totalQuestions}`);
+        res.status(200).json({ success: true, data: submission });
     } catch (err) {
+        console.error(`[DEBUG] Submission error: ${err.message}`);
         if (err && err.code === 11000) {
             return res.status(400).json({ success: false, message: 'You have already submitted this exam' });
         }

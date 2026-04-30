@@ -12,6 +12,7 @@ exports.protect = async (req, res, next) => {
         });
     }
 
+
     try {
         const rawUser = req.user;
         const userId = rawUser?._id || rawUser?.id;
@@ -48,34 +49,39 @@ exports.protect = async (req, res, next) => {
 exports.authorizeCreator = (model) => async (req, res, next) => {
     try {
         const docId = req.params.id || req.params.examId || req.body.examId;
-        let doc = await model.findById(docId);
         
+        if (!docId || !mongoose.Types.ObjectId.isValid(docId)) {
+            return res.status(400).json({ success: false, message: 'Invalid ID provided' });
+        }
+
+        let doc = await model.findById(docId);
         if (!doc) {
             return res.status(404).json({ success: false, message: 'Resource not found' });
         }
 
         let creatorId;
-        
-        // If it's a Question model, we need to check the Exam creator
         if (model.modelName === 'Question') {
             const exam = await mongoose.model('Exam').findById(doc.examId);
             if (!exam) return res.status(404).json({ success: false, message: 'Associated exam not found' });
-            creatorId = exam.createdBy.toString();
+            creatorId = exam.createdBy ? exam.createdBy.toString() : null;
         } else {
-            creatorId = doc.createdBy ? doc.createdBy.toString() : doc.userId.toString();
+            creatorId = (doc.createdBy || doc.userId || doc.owner)?.toString();
         }
 
-        const requesterId = req.userId || req.user?.id;
-        if (!req.user || !requesterId || creatorId !== requesterId) {
+        const requesterId = req.userId || req.user?._id?.toString() || req.user?.id?.toString();
+        
+        console.log(`[AUTH DEBUG] Resource: ${model.modelName}, Creator: ${creatorId}, Requester: ${requesterId}`);
+
+        if (!requesterId || creatorId !== requesterId) {
             return res.status(403).json({
                 success: false,
-                message: 'You are not authorized to perform this action'
+                message: 'You are not authorized to access this analytics/resource'
             });
         }
 
         next();
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        console.error('[AUTH ERROR]', err);
+        res.status(500).json({ success: false, message: 'Server authorization error' });
     }
 };

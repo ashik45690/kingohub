@@ -153,7 +153,24 @@ export default function CreateExam({ render }) {
 
     loadExam();
   }, [render]);
-  
+
+
+  useEffect(() => {
+    if (formData.startDate && formData.startTime && formData.endDate && formData.endTime) {
+      const start = new Date(`${formData.startDate}T${formData.startTime}`);
+      const end = new Date(`${formData.endDate}T${formData.endTime}`);
+      
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        if (end > start) {
+          const diffMs = end.getTime() - start.getTime();
+          const diffMins = Math.floor(diffMs / 60000);
+          setFormData(prev => ({ ...prev, duration: diffMins }));
+        } else {
+          setFormData(prev => ({ ...prev, duration: 0 }));
+        }
+      }
+    }
+  }, [formData.startDate, formData.startTime, formData.endDate, formData.endTime]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -356,7 +373,6 @@ export default function CreateExam({ render }) {
     description: formData.description,
     startDate: new Date(`${formData.startDate}T${formData.startTime}`).toISOString(),
     endDate: new Date(`${formData.endDate}T${formData.endTime}`).toISOString(),
-    timeLimitMinutes: formData.duration,
     authorizedEmails: formData.studentEmails,
     questions: formData.questions.map((q, index) => ({
       id: q.id,
@@ -604,20 +620,26 @@ export default function CreateExam({ render }) {
       {/* Duration */}
       <div>
         <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">
-          Duration (minutes) <span className="text-red-500">*</span>
+          Duration (auto-calculated)
         </label>
-        <input
-          type="number"
-          id="duration"
-          name="duration"
-          value={formData.duration}
-          onChange={handleInputChange}
-          min="1"
-          className={`w-full md:w-1/2 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors ${
-            errors.duration ? 'border-red-500' : 'border-gray-300'
-          }`}
-        />
-        {renderError('duration')}
+        <div className="relative w-full md:w-1/2">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <FaClock className="w-4 h-4 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            id="duration"
+            name="duration"
+            value={formData.duration > 0 ? `${formData.duration} minutes` : 'Invalid date range'}
+            readOnly
+            className={`w-full pl-10 px-4 py-2 border rounded-lg bg-gray-50 text-gray-600 font-medium outline-none transition-colors ${
+              formData.duration > 0 ? 'border-gray-200' : 'border-red-200 text-red-500'
+            }`}
+          />
+        </div>
+        {formData.duration <= 0 && formData.startDate && formData.endDate && (
+          <p className="mt-1 text-xs text-red-500 font-medium">End time must be after start time</p>
+        )}
       </div>
     </div>
   );

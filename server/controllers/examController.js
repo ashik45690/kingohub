@@ -3,6 +3,7 @@ const Exam = require('../models/Exam');
 const Submission = require('../models/Submission');
 const Question = require('../models/Question');
 const User = require('../models/User');
+const Registration = require('../models/Registration');
 const generateAccessCode = require('../utils/generateAccessCode');
 const { getStudentExamStatus, answerLetterToIndex, answerIndexToLetter, normalizeOptions } = require('../utils/helpers');
 
@@ -11,12 +12,14 @@ const normalizeEmails = (emails = []) => {
     return emails.map((e) => String(e).toLowerCase().trim()).filter(Boolean);
 };
 
+const getUserId = (req) => req.userId || req.user?._id || req.user?.id;
+
 /**
  * @desc    Create new exam
  * @route   POST /api/exams
  * @access  Private
  */
-const getUserId = (req) => req.userId || req.user?._id || req.user?.id;
+// Removed duplicate getUserId
 
 const generateUniqueAccessCode = async () => {
     let code = generateAccessCode(6);
@@ -36,21 +39,19 @@ const generateUniqueAccessCode = async () => {
 
 exports.createExam = async (req, res) => {
     try {
-        const { title, description, startDate, endDate, timeLimitMinutes, authorizedEmails, accessCode } = req.body;
+        const { title, description, startDate, endDate, authorizedEmails, accessCode, registrationClosingDate } = req.body;
 
-        if (!title || !description || !startDate || !endDate || !timeLimitMinutes) {
-            return res.status(400).json({ success: false, message: 'Missing required fields' });
-        }
-
-        if (new Date(endDate) <= new Date(startDate)) {
-            return res.status(400).json({ success: false, message: 'End date must be after start date' });
+        // Basic validation in controller for faster feedback
+        if (!title || !description || !startDate || !endDate) {
+            return res.status(400).json({ success: false, message: 'Title, Description, Start Date, and End Date are required' });
         }
 
         const userId = getUserId(req);
-        if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Authentication required' });
         }
 
+        // Generate unique access code if not provided
         let accessCodeValue = accessCode && String(accessCode).trim()
             ? String(accessCode).trim().toUpperCase()
             : await generateUniqueAccessCode();
@@ -59,29 +60,36 @@ exports.createExam = async (req, res) => {
             return res.status(500).json({ success: false, message: 'Failed to generate unique access code' });
         }
 
-        if (accessCode && String(accessCode).trim()) {
-            const existing = await Exam.findOne({ accessCode: accessCodeValue });
-            if (existing) {
-                return res.status(400).json({ success: false, message: 'Access code already in use' });
-            }
-        }
-
-        const exam = await Exam.create({
+        // Create the exam instance
+        const exam = new Exam({
             title,
             description,
-            startDate,
-            endDate,
-            timeLimitMinutes,
+            startDate: new Date(startDate),
+            endDate: new Date(endDate),
             authorizedEmails: normalizeEmails(authorizedEmails),
-            createdBy: new mongoose.Types.ObjectId(userId),
-            accessCode: accessCodeValue
+            createdBy: userId,
+            accessCode: accessCodeValue,
+            registrationClosingDate: registrationClosingDate ? new Date(registrationClosingDate) : new Date(startDate),
+            status: 'draft' // Always start as draft
         });
+
+        // Trigger pre-validate/pre-save
+        await exam.save();
 
         res.status(201).json({
             success: true,
+            message: 'Exam created successfully',
             data: exam
         });
     } catch (err) {
+        console.error('[CREATE EXAM ERROR]', err);
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation Error',
+                errors: Object.keys(err.errors).map(key => ({ field: key, message: err.errors[key].message }))
+            });
+        }
         res.status(500).json({ success: false, message: err.message });
     }
 };
@@ -193,13 +201,37 @@ exports.getEnrolledExams = async (req, res) => {
             });
         }
 
-        // 🔥 get submissions for this user
+        // 2. Get registered exams
+        const registrations = await Registration.find({ 
+            $or: [
+                { userId: new mongoose.Types.ObjectId(userId) },
+                { email: req.user.email.toLowerCase() }
+            ]
+        });
+        const registeredExamIds = registrations.map(r => r.examId.toString());
+
+        // 3. Get invited exams
+        const userEmail = req.user.email.toLowerCase();
+        const invitedExams = await Exam.find({
+            status: 'published',
+            authorizedEmails: userEmail
+        });
+        const invitedExamIds = invitedExams.map(e => e._id.toString());
+
+        // 4. Combine all unique exam IDs
+        const joinedExamIds = user.joinedExams.map(e => e._id.toString());
+        const allExamIds = [...new Set([...joinedExamIds, ...registeredExamIds, ...invitedExamIds])];
+
+        // 5. Fetch all these exams
+        const allExams = await Exam.find({ _id: { $in: allExamIds } });
+
+        // 6. Get submissions for this user
         const submissions = await Submission.find({
             userId: new mongoose.Types.ObjectId(userId)
         });
 
         // 🔥 map exams with status
-        const examsWithStatus = user.joinedExams.map((exam) => {
+        const examsWithStatus = allExams.map((exam) => {
 
             const submission = submissions.find(
                 (s) => s.examId.toString() === exam._id.toString()
@@ -326,7 +358,7 @@ exports.updateExam = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Cannot edit a published exam' });
         }
 
-        const allowed = ['title', 'description', 'startDate', 'endDate', 'timeLimitMinutes', 'authorizedEmails', 'accessCode'];
+        const allowed = ['title', 'description', 'startDate', 'endDate', 'timeLimitMinutes', 'authorizedEmails', 'accessCode', 'registrationClosingDate', 'resultPublished'];
         const updates = {};
         allowed.forEach((key) => {
             if (req.body[key] !== undefined) {
@@ -350,7 +382,8 @@ exports.updateExam = async (req, res) => {
             }
         }
 
-        exam = await Exam.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
+        Object.assign(exam, updates);
+        await exam.save();
 
         if (Array.isArray(req.body.questions)) {
             const incomingQuestions = req.body.questions;
@@ -461,6 +494,192 @@ exports.publishExam = async (req, res) => {
 
         const updated = await Exam.findByIdAndUpdate(req.params.id, { status: 'published' }, { new: true });
         res.status(200).json({ success: true, data: updated });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+/**
+ * @desc    Get all published exams (Public)
+ * @route   GET /api/exams/public
+ * @access  Public
+ */
+exports.getPublishedExams = async (req, res) => {
+    try {
+        const exams = await Exam.find({ status: 'published' }).sort({ startDate: 1 });
+        res.status(200).json({ success: true, data: exams });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+/**
+ * @desc    Register for an exam
+ * @route   POST /api/exams/:id/register
+ * @access  Public
+ */
+exports.registerForExam = async (req, res) => {
+    try {
+        const { fullName, mobileNumber, dob, location, email, qualification } = req.body;
+        const examId = req.params.id;
+
+        const exam = await Exam.findById(examId);
+        if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
+
+        const closingDate = exam.registrationClosingDate || exam.startDate;
+
+        console.log("NOW:", new Date());
+        console.log("CLOSING DATE:", new Date(closingDate));
+
+        if (new Date().getTime() >= new Date(closingDate).getTime()) {
+            return res.status(400).json({ success: false, message: 'Registration for this exam has closed' });
+        }
+
+        const registration = await Registration.create({
+            examId,
+            fullName,
+            mobileNumber,
+            dob,
+            location,
+            email: email.toLowerCase(),
+            qualification,
+            userId: req.user ? (req.user.id || req.user._id) : null
+        });
+
+        res.status(201).json({ success: true, data: registration });
+    } catch (err) {
+        if (err.code === 11000) {
+            return res.status(400).json({ success: false, message: 'You have already registered for this exam' });
+        }
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+/**
+ * @desc    Start an exam attempt
+ * @route   POST /api/exams/:id/start
+ * @access  Private
+ */
+exports.startExam = async (req, res) => {
+    try {
+        const examId = req.params.id;
+        const userId = getUserId(req);
+
+        const exam = await Exam.findById(examId);
+        if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
+
+        if (exam.status !== 'published') {
+            return res.status(400).json({ success: false, message: 'Exam is not published yet' });
+        }
+
+        // Check registration
+        const registration = await Registration.findOne({
+            examId,
+            $or: [
+                { userId },
+                { email: req.user.email.toLowerCase() }
+            ]
+        });
+
+        if (!registration) {
+            return res.status(403).json({ success: false, message: 'Only registered users can attend this exam' });
+        }
+
+        // Check time window
+        const now = new Date();
+        const start = new Date(exam.startDate);
+        const end = new Date(exam.endDate);
+
+        if (now < start) {
+            return res.status(400).json({ success: false, message: 'Exam has not started yet' });
+        }
+        if (now > end) {
+            return res.status(400).json({ success: false, message: 'Exam has already ended' });
+        }
+
+        // Check for existing submission/attempt
+        let submission = await Submission.findOne({ examId, userId });
+        if (submission && submission.status === 'submitted') {
+            return res.status(400).json({ success: false, message: 'You have already submitted this exam' });
+        }
+
+        if (!submission) {
+            // Create new ongoing attempt
+            submission = await Submission.create({
+                examId,
+                userId,
+                status: 'ongoing',
+                startTime: new Date(),
+                totalQuestions: exam.questions.length,
+                answers: []
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: {
+                submissionId: submission._id,
+                startTime: submission.startTime,
+                timeLimitMinutes: exam.timeLimitMinutes
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+/**
+ * @desc    Check registration for an exam
+ * @route   GET /api/exams/:id/registration-check
+ * @access  Private
+ */
+exports.checkRegistration = async (req, res) => {
+    try {
+        const examId = req.params.id;
+        const userId = req.user ? (req.user.id || req.user._id) : null;
+        const userEmail = req.user ? req.user.email.toLowerCase() : null;
+
+        if (!userId && !userEmail) {
+            return res.status(401).json({ success: false, message: 'Not authorized' });
+        }
+
+        const registration = await Registration.findOne({
+            examId,
+            $or: [
+                { userId },
+                { email: userEmail }
+            ]
+        });
+
+        res.status(200).json({
+            success: true,
+            isRegistered: !!registration,
+            registration: registration || null
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+/**
+ * @desc    Publish results for an exam
+ * @route   POST /api/exams/:id/publish-results
+ * @access  Private (Creator only)
+ */
+exports.publishResults = async (req, res) => {
+    try {
+        const exam = await Exam.findById(req.params.id);
+        if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
+
+        const userId = req.userId || req.user?._id;
+        if (exam.createdBy.toString() !== userId.toString()) {
+            return res.status(403).json({ success: false, message: 'Not authorized' });
+        }
+
+        exam.resultPublished = true;
+        await exam.save();
+
+        res.status(200).json({ success: true, message: 'Results published successfully' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

@@ -1,6 +1,8 @@
+const mongoose = require('mongoose');
 const Question = require('../models/Question');
 const Exam = require('../models/Exam');
 const Submission = require('../models/Submission');
+const Registration = require('../models/Registration');
 const { isExamActive, normalizeOptions, optionsToArray, answerIndexToLetter, answerLetterToIndex } = require('../utils/helpers');
 
 /**
@@ -63,8 +65,18 @@ exports.addQuestion = async (req, res) => {
 exports.getQuestionsByExam = async (req, res) => {
     try {
         const { examId } = req.params;
+        console.log(`[DEBUG] Fetching questions for examId: ${examId}`);
+
+        if (!mongoose.Types.ObjectId.isValid(examId)) {
+            console.error(`[DEBUG] Invalid examId received: ${examId}`);
+            return res.status(400).json({ success: false, message: 'Invalid exam ID format' });
+        }
+
         const exam = await Exam.findById(examId);
-        if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
+        if (!exam) {
+            console.error(`[DEBUG] Exam not found in DB: ${examId}`);
+            return res.status(404).json({ success: false, message: 'Exam not found' });
+        }
 
         const isCreator = exam.createdBy.toString() === req.user.id;
 
@@ -72,15 +84,39 @@ exports.getQuestionsByExam = async (req, res) => {
             if (exam.status !== 'published') {
                 return res.status(403).json({ success: false, message: 'Exam is not published yet' });
             }
+
+            // Check if user is registered
+            const registration = await Registration.findOne({
+                examId,
+                $or: [
+                    { userId: req.user.id },
+                    { email: req.user.email.toLowerCase() }
+                ]
+            });
+
+            if (!registration) {
+                return res.status(403).json({ success: false, message: 'You must register for this exam first' });
+            }
+
             if (exam.authorizedEmails.length > 0 && !exam.authorizedEmails.includes(req.user.email.toLowerCase())) {
                 return res.status(403).json({ success: false, message: 'You are not authorized to take this exam' });
             }
+
             const existingSubmission = await Submission.findOne({ examId, userId: req.user.id });
-            if (existingSubmission) {
+            if (existingSubmission && existingSubmission.status === 'submitted') {
                 return res.status(400).json({ success: false, message: 'You have already submitted this exam' });
             }
-            if (!isExamActive(exam.startDate, exam.endDate)) {
-                return res.status(400).json({ success: false, message: 'Exam is not active' });
+
+            // More detailed check for isExamActive
+            const now = new Date();
+            const start = new Date(exam.startDate);
+            const end = exam.endDate ? new Date(exam.endDate) : null;
+
+            if (now < start) {
+                return res.status(400).json({ success: false, message: `Exam has not started yet. It starts at ${start.toLocaleString()}` });
+            }
+            if (end && now > end) {
+                return res.status(400).json({ success: false, message: `Exam ended at ${end.toLocaleString()}` });
             }
         }
 
@@ -102,8 +138,14 @@ exports.getQuestionsByExam = async (req, res) => {
             }));
         }
 
-        res.status(200).json({ success: true, data: questions });
+        console.log(`[DEBUG] Successfully fetched ${questions.length} questions for exam ${examId}`);
+        res.status(200).json({ 
+            success: true, 
+            questions: questions, // Use 'questions' key as requested
+            data: questions       // Keep 'data' for backward compatibility
+        });
     } catch (err) {
+        console.error(`[DEBUG] Error in getQuestionsByExam: ${err.message}`);
         res.status(500).json({ success: false, message: err.message });
     }
 };

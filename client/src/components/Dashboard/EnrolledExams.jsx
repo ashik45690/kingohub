@@ -96,13 +96,12 @@ export default function EnrolledExams() {
   };
 
   const handleTakeExam = async (exam) => {
-    if (exam.status !== 'ongoing') {
+    if (exam.status !== 'ongoing' && exam.status !== 'upcoming') {
       setJoinError('This exam is not currently active.');
       return;
     }
     try {
-      await examService.joinExam(exam._id);
-      await fetchExams();
+      // Logic for joining/moving to exam page
       navigate(`/kingohub/exam?examId=${exam._id}`);
     } catch (err) {
       console.error('Failed to join exam', err);

@@ -14,6 +14,10 @@ const submissionService = {
     getUserSubmission: async (examId, userId) => {
         const response = await api.get(`/submissions/exam/${examId}/user/${userId}`);
         return unwrap(response);
+    },
+    gradeSubmission: async (submissionId, gradingData) => {
+        const response = await api.post(`/submissions/${submissionId}/grade`, gradingData);
+        return unwrap(response);
     }
 };
 

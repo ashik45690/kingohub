@@ -49,9 +49,34 @@ const ExamSchema = new mongoose.Schema({
     questions: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Question'
-    }]
+    }],
+    registrationClosingDate: {
+        type: Date
+    },
+    resultPublished: {
+        type: Boolean,
+        default: false
+    }
 }, {
     timestamps: true
+});
+
+// Calculate duration before validation so 'required' check passes
+ExamSchema.pre('validate', function() {
+    if (this.startDate && this.endDate) {
+        const start = new Date(this.startDate);
+        const end = new Date(this.endDate);
+
+        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+            if (end <= start) {
+                this.invalidate('endDate', 'End date must be after start date');
+            } else {
+                // Calculate difference in minutes
+                const diffMs = end.getTime() - start.getTime();
+                this.timeLimitMinutes = Math.floor(diffMs / 60000);
+            }
+        }
+    }
 });
 
 module.exports = mongoose.model('Exam', ExamSchema);

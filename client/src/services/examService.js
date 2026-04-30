@@ -39,6 +39,26 @@ const examService = {
         const response = await api.get(`/exams/${id}/analytics`);
         return unwrap(response);
     },
+    getPublishedExams: async () => {
+        const response = await api.get('/exams/public');
+        return unwrap(response) || [];
+    },
+    registerForExam: async (id, data) => {
+        const response = await api.post(`/exams/${id}/register`, data);
+        return unwrap(response);
+    },
+    checkRegistration: async (id) => {
+        const response = await api.get(`/exams/${id}/registration-check`);
+        return response?.data;
+    },
+    startExam: async (id) => {
+        const response = await api.post(`/exams/${id}/start`);
+        return response?.data;
+    },
+    publishResults: async (id) => {
+        const response = await api.post(`/exams/${id}/publish-results`);
+        return unwrap(response);
+    },
     joinExam: async (examId) => {
         const response = await api.post('/exam/join', { examId });
         return unwrap(response);

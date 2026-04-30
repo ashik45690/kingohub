@@ -19,9 +19,25 @@ const SubmissionSchema = new mongoose.Schema({
         },
         selectedAnswer: {
             type: Number,
-            required: true
+            required: false
+        },
+        descriptiveAnswer: {
+            type: String,
+            required: false
+        },
+        marksAwarded: {
+            type: Number,
+            default: 0
         }
     }],
+    isGraded: {
+        type: Boolean,
+        default: true // MCQs are auto-graded
+    },
+    totalPoints: {
+        type: Number,
+        default: 0
+    },
     score: {
         type: Number,
         default: 0

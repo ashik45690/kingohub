@@ -308,13 +308,7 @@ export default function ExamResults() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={handleRetake}
-              className="flex items-center justify-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-            >
-              <FaRedo className="w-5 h-5 mr-2" />
-              Retake Exam
-            </button>
+          
             <button
               onClick={handleGoHome}
               className="flex items-center justify-center px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"

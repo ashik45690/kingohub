@@ -22,6 +22,12 @@ const CreateExam = () => {
             notification.success({ message: 'Exam created successfully!' });
             navigate(`/exam-details/${res._id}`);
         } catch (err) {
+            console.error('Error creating exam:', err);
+            const message = err.response?.data?.message || err.message || 'Failed to create exam';
+            notification.error({
+                message: 'Error Creating Exam',
+                description: message,
+            });
         } finally {
             setLoading(false);
         }
