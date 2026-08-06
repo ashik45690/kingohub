@@ -43,8 +43,8 @@ const examService = {
         const response = await api.get('/exams/public');
         return unwrap(response) || [];
     },
-    registerForExam: async (id, data) => {
-        const response = await api.post(`/exams/${id}/register`, data);
+    registerForExam: async (id) => {
+        const response = await api.post(`/exams/${id}/register`, {});
         return unwrap(response);
     },
     checkRegistration: async (id) => {

@@ -39,16 +39,65 @@ const generateUniqueAccessCode = async () => {
 
 exports.createExam = async (req, res) => {
     try {
-        const { title, description, startDate, endDate, authorizedEmails, accessCode, registrationClosingDate } = req.body;
+        const { title, description, startDate, timeLimitMinutes, authorizedEmails, accessCode, registrationClosingDate, idempotencyToken } = req.body;
 
-        // Basic validation in controller for faster feedback
-        if (!title || !description || !startDate || !endDate) {
-            return res.status(400).json({ success: false, message: 'Title, Description, Start Date, and End Date are required' });
+        // Check if an exam with the same idempotencyToken already exists
+        if (idempotencyToken) {
+            const existing = await Exam.findOne({ idempotencyToken });
+            if (existing) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Exam is already created'
+                });
+            }
+        }
+
+        // Basic validation in controller
+        if (!title || !String(title).trim()) return res.status(400).json({ success: false, message: 'Title is required' });
+        if (!description || !String(description).trim()) return res.status(400).json({ success: false, message: 'Description is required' });
+        if (!startDate) return res.status(400).json({ success: false, message: 'Start Date is required' });
+
+        const examStart = new Date(startDate);
+        const now = new Date();
+        const startLocalDate = new Date(examStart.getFullYear(), examStart.getMonth(), examStart.getDate());
+        const todayLocalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (startLocalDate < todayLocalDate) {
+            return res.status(400).json({
+                success: false,
+                message: "Exam start date/time cannot be in the past."
+            });
+        } else if (startLocalDate.getTime() === todayLocalDate.getTime()) {
+            if (examStart.getTime() <= now.getTime()) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Exam start date/time cannot be in the past."
+                });
+            }
+        }
+
+        if (!timeLimitMinutes || timeLimitMinutes < 1) return res.status(400).json({ success: false, message: 'Valid Time Limit (Minutes) is required' });
+
+        const normalizedEmails = normalizeEmails(authorizedEmails);
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        for (const email of normalizedEmails) {
+            if (!emailRegex.test(email)) {
+                return res.status(400).json({ success: false, message: `Invalid email format: ${email}` });
+            }
         }
 
         const userId = getUserId(req);
         if (!userId) {
             return res.status(401).json({ success: false, message: 'Authentication required' });
+        }
+
+        // Prevent teacher from adding their own email
+        const creatorEmail = req.user?.email?.toLowerCase?.() || '';
+        if (creatorEmail && normalizedEmails.includes(creatorEmail)) {
+            return res.status(400).json({
+                success: false,
+                message: 'You cannot assign an exam to your own account.'
+            });
         }
 
         // Generate unique access code if not provided
@@ -60,17 +109,21 @@ exports.createExam = async (req, res) => {
             return res.status(500).json({ success: false, message: 'Failed to generate unique access code' });
         }
 
+        // Registration closes 10 minutes after exam start
+        const computedRegistrationClose = new Date(examStart.getTime() + 10 * 60 * 1000);
+
         // Create the exam instance
         const exam = new Exam({
             title,
             description,
-            startDate: new Date(startDate),
-            endDate: new Date(endDate),
-            authorizedEmails: normalizeEmails(authorizedEmails),
+            startDate: examStart,
+            timeLimitMinutes: Number(timeLimitMinutes),
+            authorizedEmails: normalizedEmails,
             createdBy: userId,
             accessCode: accessCodeValue,
-            registrationClosingDate: registrationClosingDate ? new Date(registrationClosingDate) : new Date(startDate),
-            status: 'draft' // Always start as draft
+            registrationClosingDate: registrationClosingDate ? new Date(registrationClosingDate) : computedRegistrationClose,
+            status: 'draft',
+            idempotencyToken
         });
 
         // Trigger pre-validate/pre-save
@@ -110,64 +163,40 @@ exports.getMyExams = async (req, res) => {
             });
         }
 
-        // ✅ Get exams created by user
         const exams = await Exam.find({
             createdBy: new mongoose.Types.ObjectId(userId)
         }).sort({ createdAt: -1 });
 
         const examIds = exams.map(e => e._id);
 
-        // ✅ Get submissions
         const submissions = await Submission.find({
             examId: { $in: examIds }
         });
 
-        // ✅ Calculate stats
         const statsByExam = {};
 
         submissions.forEach(sub => {
             const key = sub.examId.toString();
-
             if (!statsByExam[key]) {
-                statsByExam[key] = {
-                    scores: [],
-                    students: new Set()
-                };
+                statsByExam[key] = { scores: [], students: new Set() };
             }
-
             statsByExam[key].scores.push(sub.percentage);
             statsByExam[key].students.add(sub.userId.toString());
         });
 
-        // ✅ Final data
         const data = exams.map(exam => {
             const stats = statsByExam[exam._id.toString()];
-
             const studentCount = stats ? stats.students.size : 0;
-
             const averageScore =
                 stats && stats.scores.length
-                    ? Math.round(
-                          stats.scores.reduce((a, b) => a + b, 0) /
-                          stats.scores.length
-                      )
+                    ? Math.round(stats.scores.reduce((a, b) => a + b, 0) / stats.scores.length)
                     : null;
-
-            return {
-                ...exam.toObject(),
-                studentCount,
-                averageScore
-            };
+            return { ...exam.toObject(), studentCount, averageScore };
         });
 
-        return res.status(200).json({
-            success: true,
-            data   // ✅ IMPORTANT
-        });
+        return res.status(200).json({ success: true, data });
 
     } catch (err) {
-        console.error("getMyExams error:", err);
-
         return res.status(500).json({
             success: false,
             message: err.message
@@ -191,7 +220,6 @@ exports.getEnrolledExams = async (req, res) => {
             });
         }
 
-        // 🔥 get user + exams
         const user = await User.findById(userId).populate('joinedExams');
 
         if (!user) {
@@ -201,7 +229,6 @@ exports.getEnrolledExams = async (req, res) => {
             });
         }
 
-        // 2. Get registered exams
         const registrations = await Registration.find({ 
             $or: [
                 { userId: new mongoose.Types.ObjectId(userId) },
@@ -210,65 +237,42 @@ exports.getEnrolledExams = async (req, res) => {
         });
         const registeredExamIds = registrations.map(r => r.examId.toString());
 
-        // 3. Get invited exams
         const userEmail = req.user.email.toLowerCase();
         const invitedExams = await Exam.find({
             status: 'published',
             authorizedEmails: userEmail
         });
         const invitedExamIds = invitedExams.map(e => e._id.toString());
-
-        // 4. Combine all unique exam IDs
         const joinedExamIds = user.joinedExams.map(e => e._id.toString());
         const allExamIds = [...new Set([...joinedExamIds, ...registeredExamIds, ...invitedExamIds])];
-
-        // 5. Fetch all these exams
         const allExams = await Exam.find({ _id: { $in: allExamIds } });
 
-        // 6. Get submissions for this user
         const submissions = await Submission.find({
             userId: new mongoose.Types.ObjectId(userId)
         });
 
-        // 🔥 map exams with status
         const examsWithStatus = allExams.map((exam) => {
-
             const submission = submissions.find(
                 (s) => s.examId.toString() === exam._id.toString()
             );
-
             const hasSubmitted = !!submission;
-
-            // ✅ use your helper
             const status = getStudentExamStatus(
                 exam.startDate,
-                exam.endDate,
+                exam.timeLimitMinutes,
                 hasSubmitted
             );
-
             return {
                 ...exam.toObject(),
-
-                // 🔥 IMPORTANT
-                status, // upcoming / ongoing / completed
-
-                // 🔥 optional (useful for UI)
+                status,
                 score: submission ? submission.percentage : null,
                 hasSubmitted
             };
         });
 
-        res.status(200).json({
-            success: true,
-            data: examsWithStatus
-        });
+        res.status(200).json({ success: true, data: examsWithStatus });
 
     } catch (err) {
-        console.log('getEnrolledExams error:', err);
-        res.status(500).json({
-            success: false,
-            message: err.message
-        });
+        res.status(500).json({ success: false, message: err.message });
     }
 };
 
@@ -299,7 +303,7 @@ exports.getExamByCode = async (req, res) => {
         }
 
         const existingSubmission = await Submission.findOne({ examId: exam._id, userId: new mongoose.Types.ObjectId(userId) });
-        const status = getStudentExamStatus(exam.startDate, exam.endDate, !!existingSubmission);
+        const status = getStudentExamStatus(exam.startDate, exam.timeLimitMinutes, !!existingSubmission);
         res.status(200).json({ success: true, data: { ...exam.toObject(), status } });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -368,11 +372,35 @@ exports.updateExam = async (req, res) => {
             }
         });
 
-        const nextStart = updates.startDate ? new Date(updates.startDate) : new Date(exam.startDate);
-        const nextEnd = updates.endDate ? new Date(updates.endDate) : new Date(exam.endDate);
-        if (nextEnd <= nextStart) {
-            return res.status(400).json({ success: false, message: 'End date must be after start date' });
+        if (updates.authorizedEmails) {
+            const creatorEmail = req.user?.email?.toLowerCase?.() || '';
+            if (creatorEmail && updates.authorizedEmails.includes(creatorEmail)) {
+                return res.status(400).json({ success: false, message: 'You cannot assign an exam to your own account.' });
+            }
         }
+
+        if (updates.startDate) {
+            const examStart = new Date(updates.startDate);
+            const now = new Date();
+            const startLocalDate = new Date(examStart.getFullYear(), examStart.getMonth(), examStart.getDate());
+            const todayLocalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+            if (startLocalDate < todayLocalDate) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Exam start date/time cannot be in the past."
+                });
+            } else if (startLocalDate.getTime() === todayLocalDate.getTime()) {
+                if (examStart.getTime() <= now.getTime()) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Exam start date/time cannot be in the past."
+                    });
+                }
+            }
+        }
+
+        const nextStart = updates.startDate ? new Date(updates.startDate) : new Date(exam.startDate);
 
         if (updates.accessCode) {
             updates.accessCode = String(updates.accessCode).trim().toUpperCase();
@@ -514,36 +542,57 @@ exports.getPublishedExams = async (req, res) => {
 };
 
 /**
- * @desc    Register for an exam
+ * @desc    Register for an exam (auto-register using authenticated user session)
  * @route   POST /api/exams/:id/register
- * @access  Public
+ * @access  Private
  */
 exports.registerForExam = async (req, res) => {
     try {
-        const { fullName, mobileNumber, dob, location, email, qualification } = req.body;
         const examId = req.params.id;
+
+        if (!req.user) {
+            return res.status(401).json({ success: false, message: 'Authentication required' });
+        }
+
+        const userEmail = req.user.email.toLowerCase();
+        const userId = req.user.id || req.user._id;
+        const fullName = req.user.name || '';
 
         const exam = await Exam.findById(examId);
         if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
 
-        const closingDate = exam.registrationClosingDate || exam.startDate;
+        if (exam.status !== 'published') {
+            return res.status(400).json({ success: false, message: 'Exam is not published yet' });
+        }
 
-        console.log("NOW:", new Date());
-        console.log("CLOSING DATE:", new Date(closingDate));
+        // Enforce email whitelist — only authorized students may register
+        if (exam.authorizedEmails.length > 0 && !exam.authorizedEmails.includes(userEmail)) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to attend this examination.'
+            });
+        }
 
-        if (new Date().getTime() >= new Date(closingDate).getTime()) {
+        // Prevent exam creator from registering
+        if (exam.createdBy.toString() === userId.toString()) {
+            return res.status(403).json({ success: false, message: 'Exam creator cannot register as a student.' });
+        }
+
+        // Registration window check
+        const examStart = new Date(exam.startDate);
+        const closingDate = exam.registrationClosingDate
+            ? new Date(exam.registrationClosingDate)
+            : new Date(examStart.getTime() + 10 * 60 * 1000);
+
+        if (new Date().getTime() >= closingDate.getTime()) {
             return res.status(400).json({ success: false, message: 'Registration for this exam has closed' });
         }
 
         const registration = await Registration.create({
             examId,
-            fullName,
-            mobileNumber,
-            dob,
-            location,
-            email: email.toLowerCase(),
-            qualification,
-            userId: req.user ? (req.user.id || req.user._id) : null
+            userId,
+            email: userEmail,
+            fullName
         });
 
         res.status(201).json({ success: true, data: registration });
@@ -568,6 +617,16 @@ exports.startExam = async (req, res) => {
         const exam = await Exam.findById(examId);
         if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
 
+        // Check if user is the exam creator
+        if (exam.createdBy.toString() === userId.toString()) {
+            return res.status(403).json({ success: false, message: 'Exam creator cannot take the exam' });
+        }
+
+        // Check if user is authorized if restriction is set
+        if (exam.authorizedEmails.length > 0 && !exam.authorizedEmails.includes(req.user.email.toLowerCase())) {
+            return res.status(403).json({ success: false, message: 'You are not authorized to attend this examination.' });
+        }
+
         if (exam.status !== 'published') {
             return res.status(400).json({ success: false, message: 'Exam is not published yet' });
         }
@@ -588,7 +647,7 @@ exports.startExam = async (req, res) => {
         // Check time window
         const now = new Date();
         const start = new Date(exam.startDate);
-        const end = new Date(exam.endDate);
+        const end = new Date(start.getTime() + (exam.timeLimitMinutes || 0) * 60000);
 
         if (now < start) {
             return res.status(400).json({ success: false, message: 'Exam has not started yet' });

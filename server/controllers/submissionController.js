@@ -46,9 +46,9 @@ exports.submitExam = async (req, res) => {
 
         const now = new Date();
         const start = new Date(exam.startDate);
-        const end = exam.endDate ? new Date(exam.endDate) : null;
+        const end = new Date(start.getTime() + (exam.timeLimitMinutes || 0) * 60000);
 
-        if (now < start || (end && now > end)) {
+        if (now < start || now > end) {
             return res.status(400).json({ success: false, message: 'Submission is not allowed outside exam time window' });
         }
 

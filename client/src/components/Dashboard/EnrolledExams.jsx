@@ -7,9 +7,6 @@ export default function EnrolledExams() {
   const navigate = useNavigate();
 
   const [exams, setExams] = useState([]);
-
-  console.log(exams,'hhhh');
-  
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [joinError, setJoinError] = useState('');
@@ -18,14 +15,8 @@ export default function EnrolledExams() {
   const fetchExams = useCallback(async () => {
   try {
     setLoading(true);
-
     const res = await examService.getEnrolledExams();
-
-    console.log("Enrolled Exams:", res);
-
-    // ✅ FIXED
     setExams(Array.isArray(res) ? res : []);
-
   } catch (err) {
     console.error('Failed to fetch enrolled exams', err);
     setExams([]);

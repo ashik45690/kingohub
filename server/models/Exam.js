@@ -32,10 +32,6 @@ const ExamSchema = new mongoose.Schema({
         type: Date,
         required: true
     },
-    endDate: {
-        type: Date,
-        required: true
-    },
     timeLimitMinutes: {
         type: Number,
         required: true,
@@ -56,27 +52,15 @@ const ExamSchema = new mongoose.Schema({
     resultPublished: {
         type: Boolean,
         default: false
+    },
+    idempotencyToken: {
+        type: String,
+        required: false
     }
 }, {
     timestamps: true
 });
 
-// Calculate duration before validation so 'required' check passes
-ExamSchema.pre('validate', function() {
-    if (this.startDate && this.endDate) {
-        const start = new Date(this.startDate);
-        const end = new Date(this.endDate);
-
-        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-            if (end <= start) {
-                this.invalidate('endDate', 'End date must be after start date');
-            } else {
-                // Calculate difference in minutes
-                const diffMs = end.getTime() - start.getTime();
-                this.timeLimitMinutes = Math.floor(diffMs / 60000);
-            }
-        }
-    }
-});
+// Remove endDate calculation
 
 module.exports = mongoose.model('Exam', ExamSchema);

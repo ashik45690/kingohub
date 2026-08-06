@@ -20,7 +20,7 @@ const Exam = require('../models/Exam');
 
 const router = express.Router();
 
-// Public routes (Registration)
+// Protected routes that run before router.use(protect)
 router.get('/public', getPublishedExams);
 router.post('/:id/register', protect, registerForExam);
 router.get('/:id/registration-check', protect, checkRegistration);

@@ -12,29 +12,18 @@ const RegistrationSchema = new mongoose.Schema({
     },
     fullName: {
         type: String,
-        required: true
-    },
-    mobileNumber: {
-        type: String,
-        required: true
+        required: false,
+        default: ''
     },
     dob: {
         type: Date,
-        required: true
-    },
-    location: {
-        type: String,
-        required: true
+        required: false
     },
     email: {
         type: String,
         required: true,
         lowercase: true,
         trim: true
-    },
-    qualification: {
-        type: String,
-        required: true
     },
     registrationDate: {
         type: Date,

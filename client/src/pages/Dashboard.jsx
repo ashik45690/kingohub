@@ -15,6 +15,7 @@ export default function Dashboard() {
 
   const [Pagerendering,setPageRendering] = useState('Dashboard')
   const [sidebarOpen,setSidebarOpen] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const { logout, user } = useAuth();
   const navigate = useNavigate();
 
@@ -31,7 +32,8 @@ export default function Dashboard() {
     closeSidebar()
   }
 
-  const handleLogout = async () => {
+  const confirmLogout = async () => {
+    setShowLogoutModal(false);
     await logout();
     navigate("/");
   }
@@ -141,7 +143,7 @@ export default function Dashboard() {
           {/* Logout */}
           <div className="px-4 pb-6">
             <button 
-              onClick={handleLogout} 
+              onClick={() => setShowLogoutModal(true)} 
               className="w-full flex items-center justify-center space-x-2 bg-gray-50 border border-gray-200 py-2.5 rounded-xl hover:bg-red-50 hover:border-red-100 hover:text-red-600 transition-all group"
             >
               <span className="font-medium">Logout</span>
@@ -188,6 +190,38 @@ export default function Dashboard() {
         </div>
 
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 flex flex-col items-center text-center border border-gray-100 animate-scale-in">
+            {/* Icon */}
+            <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-4">
+              <IoLogOutOutline className="text-red-500 text-2xl" />
+            </div>
+
+            {/* Title */}
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Logout</h3>
+            <p className="text-gray-500 text-sm mb-6">Are you sure you want to logout?</p>
+
+            {/* Buttons */}
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmLogout}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors text-sm"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
 

@@ -26,9 +26,11 @@ exports.calculateTimeTaken = (start, end) => {
  * @param {Date} end - Exam end date
  * @returns {boolean}
  */
-exports.isExamActive = (start, end) => {
+exports.isExamActive = (start, durationMins) => {
     const now = new Date();
-    return now >= new Date(start) && now <= new Date(end);
+    const startDate = new Date(start);
+    const endDate = new Date(startDate.getTime() + durationMins * 60000);
+    return now >= startDate && now <= endDate;
 };
 
 /**
@@ -38,11 +40,13 @@ exports.isExamActive = (start, end) => {
  * @param {boolean} hasSubmitted
  * @returns {'upcoming'|'ongoing'|'completed'}
  */
-exports.getStudentExamStatus = (start, end, hasSubmitted) => {
+exports.getStudentExamStatus = (start, durationMins, hasSubmitted) => {
     if (hasSubmitted) return 'completed';
     const now = new Date();
-    if (now < new Date(start)) return 'upcoming';
-    if (now > new Date(end)) return 'completed';
+    const startDate = new Date(start);
+    const endDate = new Date(startDate.getTime() + (durationMins || 0) * 60000);
+    if (now < startDate) return 'upcoming';
+    if (now > endDate) return 'completed';
     return 'ongoing';
 };
 

@@ -110,12 +110,12 @@ exports.getQuestionsByExam = async (req, res) => {
             // More detailed check for isExamActive
             const now = new Date();
             const start = new Date(exam.startDate);
-            const end = exam.endDate ? new Date(exam.endDate) : null;
+            const end = new Date(start.getTime() + (exam.timeLimitMinutes || 0) * 60000);
 
             if (now < start) {
                 return res.status(400).json({ success: false, message: `Exam has not started yet. It starts at ${start.toLocaleString()}` });
             }
-            if (end && now > end) {
+            if (now > end) {
                 return res.status(400).json({ success: false, message: `Exam ended at ${end.toLocaleString()}` });
             }
         }

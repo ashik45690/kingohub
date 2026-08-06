@@ -10,12 +10,7 @@ useEffect(() => {
   const fetchMyExams = async () => {
     try {
       const res = await examService.getMyExams();
-
-      console.log("My Exams:", res);
-
-      // ✅ FIX
       setExams(Array.isArray(res) ? res : []);
-
     } catch (err) {
       console.error('Failed to fetch my exams', err);
     } finally {
@@ -50,19 +45,16 @@ useEffect(() => {
 
   // Handle action button clicks
   const handleEdit = (examId) => {
-    console.log('Edit exam:', examId);
     localStorage.setItem('editExamId', examId);
     render('CreateExam');
   };
 
   const handleView = (examId) => {
-    console.log('View exam:', examId);
     localStorage.setItem('selectedExamId', examId);
     render('view');
   };
 
   const handleAnalyze = (examId) => {
-    console.log('Analyze exam:', examId);
     localStorage.setItem('selectedExamId', examId);
     render('Dashboard');
   };

@@ -65,7 +65,6 @@ export default function TakeExam() {
       alert('Exam submitted successfully!');
       navigate(`/kingohub/examresult?examId=${exam._id}`);
     } catch (err) {
-      console.error('[DEBUG] Submission error:', err);
       alert(err?.response?.data?.message || 'Failed to submit exam');
       setIsSubmitted(false); // Allow re-submission if failed
     }
@@ -115,21 +114,20 @@ export default function TakeExam() {
             
             if (qList && qList.length > 0) {
               setShuffledQuestions(qList);
-              const endDate = examData.endDate ? new Date(examData.endDate) : null;
-              if (now >= startDate && (!endDate || now <= endDate)) {
+              const endDate = new Date(startDate.getTime() + (examData.timeLimitMinutes || 0) * 60000);
+              if (now >= startDate && now <= endDate) {
                  setTimeRemaining(Math.max((examData.timeLimitMinutes || 60) * 60, 0));
                  setExamStarted(true);
               }
             }
           } catch (qErr) {
-            console.log("[DEBUG] Question fetch failed in initial load:", qErr?.response?.data?.message || qErr.message);
+            // Question fetch failed on initial load — likely not started yet, silently skip
           }
         }
       }
 
       setLoading(false);
     } catch (err) {
-      console.error('[DEBUG] Error fetching initial data:', err);
       setError(err?.response?.data?.message || err.message || 'Failed to load exam data');
       setLoading(false);
     }
@@ -187,7 +185,6 @@ export default function TakeExam() {
       setExamStarted(true);
       setLoading(false);
     } catch (err) {
-      console.error('[DEBUG] Error starting exam:', err);
       const msg = err?.response?.data?.message || err.message || 'Failed to start exam';
       alert(msg);
       setLoading(false);
@@ -272,7 +269,8 @@ export default function TakeExam() {
   // 2. Registered but not started logic
   if (!examStarted) {
     const isPastStart = examStartDate && now >= examStartDate;
-    const isPastEnd = exam.endDate ? now > new Date(exam.endDate) : false;
+    const endDate = new Date(examStartDate.getTime() + (exam.timeLimitMinutes || 0) * 60000);
+    const isPastEnd = now > endDate;
 
     if (isPastEnd) {
       return (
@@ -280,7 +278,7 @@ export default function TakeExam() {
           <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center border border-gray-100">
             <FaExclamationTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Exam Ended</h2>
-            <p className="text-gray-600 mb-6">This exam has already concluded on {new Date(exam.endDate).toLocaleString()}.</p>
+            <p className="text-gray-600 mb-6">This exam has already concluded on {endDate.toLocaleString()}.</p>
             <button onClick={() => navigate('/dashboard')} className="w-full px-6 py-3 bg-gray-600 text-white rounded-xl font-bold">
               Back to Dashboard
             </button>

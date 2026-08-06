@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   FaPlus, 
   FaTrash, 
@@ -17,6 +17,7 @@ import {
 import QuestionForm from '../Question/QuestionForm';
 import QuestionLists from '../Question/QuestionLists';
 import examService from '../../services/examService';
+import { useAuth } from '../../context/AuthContext';
 
 const STEPS = [
   { id: 1, title: 'Basic Details', icon: FaClock },
@@ -28,13 +29,27 @@ const STEPS = [
 
 
 export default function CreateExam({ render }) {
+  const { user } = useAuth();
+  const bulkEmailsRef = useRef(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [bulkEmailText, setBulkEmailText] = useState('');
   const [errors, setErrors] = useState({});
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingExamId, setEditingExamId] = useState(null);
   const [editingQuestionIndex, setEditingQuestionIndex] = useState(null);
   const [editingQuestion, setEditingQuestion] = useState(null);
   
+  // Submission states
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasCreatedExam, setHasCreatedExam] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState({
+    isOpen: false,
+    type: 'loading',
+    message: ''
+  });
+  const [idempotencyToken] = useState(() => {
+    return 'req_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -43,7 +58,6 @@ export default function CreateExam({ render }) {
     description: '',
     startDate: '',
     startTime: '',
-    endDate: '',
     endTime: '',
     duration: 60, // minutes
     
@@ -132,8 +146,6 @@ export default function CreateExam({ render }) {
           description: exam.description || '',
           startDate: formatDateInput(exam.startDate),
           startTime: formatTimeInput(exam.startDate),
-          endDate: formatDateInput(exam.endDate),
-          endTime: formatTimeInput(exam.endDate),
           duration: exam.timeLimitMinutes || 60,
           studentEmails: Array.isArray(exam.authorizedEmails) ? exam.authorizedEmails : [],
           questions: mappedQuestions
@@ -155,22 +167,80 @@ export default function CreateExam({ render }) {
   }, [render]);
 
 
+  const formatDurationDisplay = (minutes) => {
+    if (minutes <= 0) return 'Select valid times';
+    if (minutes < 60) return `${minutes} minutes`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const hourStr = hours === 1 ? '1 hour' : `${hours} hours`;
+    if (mins === 0) return hourStr;
+    return `${hourStr} ${mins} minutes`;
+  };
+
   useEffect(() => {
-    if (formData.startDate && formData.startTime && formData.endDate && formData.endTime) {
-      const start = new Date(`${formData.startDate}T${formData.startTime}`);
-      const end = new Date(`${formData.endDate}T${formData.endTime}`);
-      
-      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-        if (end > start) {
-          const diffMs = end.getTime() - start.getTime();
-          const diffMins = Math.floor(diffMs / 60000);
-          setFormData(prev => ({ ...prev, duration: diffMins }));
-        } else {
-          setFormData(prev => ({ ...prev, duration: 0 }));
+    let dateErr = null;
+    let timeErr = null;
+
+    if (formData.startDate) {
+      const [year, month, day] = formData.startDate.split('-').map(Number);
+      const selectedDateOnly = new Date(year, month - 1, day);
+      const today = new Date();
+      const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+      if (selectedDateOnly < todayDateOnly) {
+        dateErr = 'Start date cannot be in the past.';
+      } else if (selectedDateOnly.getTime() === todayDateOnly.getTime() && formData.startTime) {
+        const [hours, minutes] = formData.startTime.split(':').map(Number);
+        const selectedDateTime = new Date(year, month - 1, day, hours, minutes);
+        if (selectedDateTime.getTime() <= today.getTime()) {
+          timeErr = 'Start time cannot be in the past.';
         }
       }
     }
-  }, [formData.startDate, formData.startTime, formData.endDate, formData.endTime]);
+
+    if (formData.startTime && formData.endTime) {
+      const dateToUse = formData.startDate || '2000-01-01';
+      const start = new Date(`${dateToUse}T${formData.startTime}`);
+      const end = new Date(`${dateToUse}T${formData.endTime}`);
+      
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        const diffMs = end.getTime() - start.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        
+        setFormData(prev => ({ ...prev, duration: diffMins }));
+        
+        if (diffMins <= 0) {
+          setErrors(prev => ({ 
+            ...prev, 
+            startDate: dateErr,
+            startTime: timeErr,
+            endTime: 'End time must be greater than start time.',
+            duration: 'End time must be greater than start time.'
+          }));
+        } else {
+          setErrors(prev => ({ 
+            ...prev, 
+            startDate: dateErr,
+            startTime: timeErr,
+            endTime: null, 
+            duration: null 
+          }));
+        }
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          startDate: dateErr,
+          startTime: timeErr
+        }));
+      }
+    } else {
+      setErrors(prev => ({
+        ...prev,
+        startDate: dateErr,
+        startTime: timeErr
+      }));
+    }
+  }, [formData.startDate, formData.startTime, formData.endTime]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -184,38 +254,56 @@ export default function CreateExam({ render }) {
   // Step 1: Basic Details Validation
   const validateStep1 = () => {
     const newErrors = {};
-    if (!formData.title.trim()) {
+    const titleStr = formData.title.trim();
+    if (!titleStr) {
       newErrors.title = 'Title is required';
+    } else if (/^\d+$/.test(titleStr)) {
+      newErrors.title = 'Title cannot contain only numbers';
+    } else if (!/[a-zA-Z]/.test(titleStr)) {
+      newErrors.title = 'Title must contain valid text';
     }
+
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
     }
+
+    let dateErr = null;
+    let timeErr = null;
     if (!formData.startDate) {
       newErrors.startDate = 'Start date is required';
+    } else {
+      const [year, month, day] = formData.startDate.split('-').map(Number);
+      const selectedDateOnly = new Date(year, month - 1, day);
+      const today = new Date();
+      const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      if (selectedDateOnly < todayDateOnly) {
+        newErrors.startDate = 'Start date cannot be in the past.';
+        dateErr = 'Start date cannot be in the past.';
+      } else if (selectedDateOnly.getTime() === todayDateOnly.getTime() && formData.startTime) {
+        const [hours, minutes] = formData.startTime.split(':').map(Number);
+        const selectedDateTime = new Date(year, month - 1, day, hours, minutes);
+        if (selectedDateTime.getTime() <= today.getTime()) {
+          newErrors.startTime = 'Start time cannot be in the past.';
+          timeErr = 'Start time cannot be in the past.';
+        }
+      }
     }
+
     if (!formData.startTime) {
       newErrors.startTime = 'Start time is required';
-    }
-    if (!formData.endDate) {
-      newErrors.endDate = 'End date is required';
     }
     if (!formData.endTime) {
       newErrors.endTime = 'End time is required';
     }
-    if (formData.duration < 1) {
-      newErrors.duration = 'Duration must be at least 1 minute';
+    if (formData.duration <= 0) {
+      newErrors.endTime = 'End time must be greater than start time.';
+      newErrors.duration = 'End time must be greater than start time.';
     }
     
-    // Check if end date/time is after start date/time
-    if (formData.startDate && formData.startTime && formData.endDate && formData.endTime) {
-      const start = new Date(`${formData.startDate}T${formData.startTime}`);
-      const end = new Date(`${formData.endDate}T${formData.endTime}`);
-      if (end <= start) {
-        newErrors.endDate = 'End date must be after start date';
-      }
-    }
-    
-    setErrors(newErrors);
+    setErrors(prev => ({
+      ...prev,
+      ...newErrors
+    }));
     return Object.keys(newErrors).length === 0;
   };
 
@@ -285,21 +373,30 @@ export default function CreateExam({ render }) {
 
   // Step 2: Email management
   const addEmail = () => {
-    const email = formData.emailInput.trim();
+    const email = formData.emailInput.trim().toLowerCase();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
-    if (!email) return;
-    
-    if (!emailRegex.test(email)) {
-      setErrors(prev => ({ ...prev, emailInput: 'Invalid email format' }));
+    const teacherEmail = user?.email?.toLowerCase?.() || '';
+
+    if (!email) {
+      setErrors(prev => ({ ...prev, emailInput: 'Please enter an email address' }));
       return;
     }
-    
+
+    if (!emailRegex.test(email)) {
+      setErrors(prev => ({ ...prev, emailInput: 'Please enter a valid email address' }));
+      return;
+    }
+
+    if (teacherEmail && email === teacherEmail) {
+      setErrors(prev => ({ ...prev, emailInput: 'You cannot assign an exam to your own account.' }));
+      return;
+    }
+
     if (formData.studentEmails.includes(email)) {
       setErrors(prev => ({ ...prev, emailInput: 'Email already added' }));
       return;
     }
-    
+
     setFormData(prev => ({
       ...prev,
       studentEmails: [...prev.studentEmails, email],
@@ -372,8 +469,9 @@ export default function CreateExam({ render }) {
     title: formData.title,
     description: formData.description,
     startDate: new Date(`${formData.startDate}T${formData.startTime}`).toISOString(),
-    endDate: new Date(`${formData.endDate}T${formData.endTime}`).toISOString(),
+    timeLimitMinutes: formData.duration,
     authorizedEmails: formData.studentEmails,
+    idempotencyToken,
     questions: formData.questions.map((q, index) => ({
       id: q.id,
       questionText: q.questionText,
@@ -394,22 +492,73 @@ export default function CreateExam({ render }) {
 
   // Publish exam
   const handlePublish = async () => {
+    if (isSubmitting) return;
+
+    const isStep1Valid = validateStep1();
+    const isStep2Valid = validateStep2();
+    const isStep3Valid = validateStep3();
+
+    if (!isStep1Valid || !isStep2Valid || !isStep3Valid) {
+      if (!isStep1Valid) setCurrentStep(1);
+      else if (!isStep2Valid) setCurrentStep(2);
+      else if (!isStep3Valid) setCurrentStep(3);
+
+      setSubmissionStatus({
+        isOpen: true,
+        type: 'error',
+        message: 'Please resolve all validation errors before publishing.'
+      });
+      return;
+    }
+
+    if (errors.emailInput || errors.bulkEmails) {
+      setSubmissionStatus({
+        isOpen: true,
+        type: 'error',
+        message: 'Please remove invalid emails before publishing.'
+      });
+      return;
+    }
+
+    if (!isEditMode && hasCreatedExam) {
+      setSubmissionStatus({
+        isOpen: true,
+        type: 'duplicate',
+        message: 'Exam is already created'
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmissionStatus({
+      isOpen: true,
+      type: 'loading',
+      message: 'Creating your exam... Please wait.'
+    });
+
     try {
       const examData = buildExamPayload();
 
       if (isEditMode && editingExamId) {
-        console.log('Updating and publishing exam:', editingExamId, examData);
+        setSubmissionStatus(prev => ({ ...prev, message: 'Updating your exam... Please wait.' }));
         await examService.updateExam(editingExamId, examData);
         await examService.publishExam(editingExamId);
-        handleEditSuccess('Exam updated and published successfully!');
+
+        setIsSubmitting(false);
+        setSubmissionStatus({
+          isOpen: true,
+          type: 'success',
+          message: 'Exam updated and published successfully!'
+        });
+        localStorage.removeItem('editExamId');
         return;
       }
 
-      console.log('Publishing exam:', examData);
       const createdExam = await examService.createExam(examData);
       const examId = createdExam._id;
+      setHasCreatedExam(true);
 
-      // Add questions
+      setSubmissionStatus(prev => ({ ...prev, message: 'Adding questions... Please wait.' }));
       for (let i = 0; i < formData.questions.length; i++) {
         const q = formData.questions[i];
         await examService.addQuestion({
@@ -422,31 +571,103 @@ export default function CreateExam({ render }) {
         });
       }
 
+      setSubmissionStatus(prev => ({ ...prev, message: 'Publishing your exam... Please wait.' }));
       await examService.publishExam(examId);
 
-      alert('Exam published successfully!');
+      setIsSubmitting(false);
+      setSubmissionStatus({
+        isOpen: true,
+        type: 'success',
+        message: 'Exam created and published successfully!'
+      });
     } catch (error) {
       console.error('Error publishing exam:', error);
-      alert('Failed to publish exam');
+      setIsSubmitting(false);
+      const errMsg = error.response?.data?.message || 'Failed to create exam. Please try again';
+      if (errMsg === 'Exam is already created') {
+        setHasCreatedExam(true);
+        setSubmissionStatus({
+          isOpen: true,
+          type: 'duplicate',
+          message: 'Exam is already created'
+        });
+      } else {
+        setSubmissionStatus({
+          isOpen: true,
+          type: 'error',
+          message: errMsg
+        });
+      }
     }
   };
 
   const handleSaveDraft = async () => {
+    if (isSubmitting) return;
+
+    const isStep1Valid = validateStep1();
+    const isStep2Valid = validateStep2();
+    const isStep3Valid = validateStep3();
+
+    if (!isStep1Valid || !isStep2Valid || !isStep3Valid) {
+      if (!isStep1Valid) setCurrentStep(1);
+      else if (!isStep2Valid) setCurrentStep(2);
+      else if (!isStep3Valid) setCurrentStep(3);
+
+      setSubmissionStatus({
+        isOpen: true,
+        type: 'error',
+        message: 'Please resolve all validation errors before saving draft.'
+      });
+      return;
+    }
+
+    if (errors.emailInput || errors.bulkEmails) {
+      setSubmissionStatus({
+        isOpen: true,
+        type: 'error',
+        message: 'Please remove invalid emails before saving.'
+      });
+      return;
+    }
+
+    if (!isEditMode && hasCreatedExam) {
+      setSubmissionStatus({
+        isOpen: true,
+        type: 'duplicate',
+        message: 'Exam is already created'
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmissionStatus({
+      isOpen: true,
+      type: 'loading',
+      message: 'Saving your draft... Please wait.'
+    });
+
     try {
       const examData = buildExamPayload();
 
       if (isEditMode && editingExamId) {
-        console.log('Updating draft exam:', editingExamId, examData);
+        setSubmissionStatus(prev => ({ ...prev, message: 'Updating draft... Please wait.' }));
         await examService.updateExam(editingExamId, examData);
-        handleEditSuccess('Draft updated successfully!');
+
+        setIsSubmitting(false);
+        setSubmissionStatus({
+          isOpen: true,
+          type: 'success',
+          message: 'Draft updated successfully!'
+        });
+        localStorage.removeItem('editExamId');
         return;
       }
 
-      console.log('Saving draft exam:', examData);
       const createdExam = await examService.createExam(examData);
       const examId = createdExam._id;
+      setHasCreatedExam(true);
 
-      // Add questions
+      setSubmissionStatus(prev => ({ ...prev, message: 'Adding questions... Please wait.' }));
       for (let i = 0; i < formData.questions.length; i++) {
         const q = formData.questions[i];
         await examService.addQuestion({
@@ -459,10 +680,30 @@ export default function CreateExam({ render }) {
         });
       }
 
-      alert('Draft saved successfully!');
+      setIsSubmitting(false);
+      setSubmissionStatus({
+        isOpen: true,
+        type: 'success',
+        message: 'Draft saved successfully!'
+      });
     } catch (error) {
       console.error('Error saving draft:', error);
-      alert('Failed to save draft');
+      setIsSubmitting(false);
+      const errMsg = error.response?.data?.message || 'Failed to save draft. Please try again';
+      if (errMsg === 'Exam is already created') {
+        setHasCreatedExam(true);
+        setSubmissionStatus({
+          isOpen: true,
+          type: 'duplicate',
+          message: 'Exam is already created'
+        });
+      } else {
+        setSubmissionStatus({
+          isOpen: true,
+          type: 'error',
+          message: errMsg
+        });
+      }
     }
   };
 
@@ -509,6 +750,7 @@ export default function CreateExam({ render }) {
           Description <span className="text-red-500">*</span>
         </label>
         <textarea
+          key="description-textarea"
           id="description"
           name="description"
           value={formData.description}
@@ -570,29 +812,6 @@ export default function CreateExam({ render }) {
           {renderError('startTime')}
         </div>
 
-        {/* End Date */}
-        <div>
-          <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-            End Date <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaCalendarAlt className="w-4 h-4 text-gray-400" />
-            </div>
-            <input
-              type="date"
-              id="endDate"
-              name="endDate"
-              value={formData.endDate}
-              onChange={handleInputChange}
-              className={`w-full pl-10 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors ${
-                errors.endDate ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
-          </div>
-          {renderError('endDate')}
-        </div>
-
         {/* End Time */}
         <div>
           <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 mb-1">
@@ -620,7 +839,7 @@ export default function CreateExam({ render }) {
       {/* Duration */}
       <div>
         <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">
-          Duration (auto-calculated)
+          Duration (Auto-calculated)
         </label>
         <div className="relative w-full md:w-1/2">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -630,113 +849,153 @@ export default function CreateExam({ render }) {
             type="text"
             id="duration"
             name="duration"
-            value={formData.duration > 0 ? `${formData.duration} minutes` : 'Invalid date range'}
+            value={formatDurationDisplay(formData.duration)}
             readOnly
             className={`w-full pl-10 px-4 py-2 border rounded-lg bg-gray-50 text-gray-600 font-medium outline-none transition-colors ${
               formData.duration > 0 ? 'border-gray-200' : 'border-red-200 text-red-500'
             }`}
           />
         </div>
-        {formData.duration <= 0 && formData.startDate && formData.endDate && (
-          <p className="mt-1 text-xs text-red-500 font-medium">End time must be after start time</p>
-        )}
+        {renderError('duration')}
       </div>
     </div>
   );
 
   // Step 2: Student Emails Form
-  const renderStep2 = () => (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Add Students</h2>
-      
-      {/* Email Input */}
-      <div>
-        <label htmlFor="emailInput" className="block text-sm font-medium text-gray-700 mb-1">
-          Student Email
-        </label>
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaEnvelope className="w-4 h-4 text-gray-400" />
+  const renderStep2 = () => {
+    const teacherEmail = user?.email?.toLowerCase?.() || '';
+
+    const handleBulkEmailsBlur = (e) => {
+      const rawInput = e.target.value;
+      if (!rawInput.trim()) return;
+
+      const emails = rawInput.split(/[\n,]/).map(em => em.trim().toLowerCase()).filter(em => em);
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      const validEmails = [];
+      const invalidEmails = [];
+      let selfAssignError = false;
+
+      emails.forEach(em => {
+        if (!emailRegex.test(em)) {
+          invalidEmails.push(em);
+        } else if (teacherEmail && em === teacherEmail) {
+          selfAssignError = true;
+        } else if (!formData.studentEmails.includes(em) && !validEmails.includes(em)) {
+          validEmails.push(em);
+        }
+      });
+
+      if (selfAssignError) {
+        setErrors(prev => ({ ...prev, bulkEmails: 'You cannot assign an exam to your own account.' }));
+      } else if (invalidEmails.length > 0) {
+        setErrors(prev => ({ ...prev, bulkEmails: `Invalid emails: ${invalidEmails.join(', ')}` }));
+      } else {
+        setErrors(prev => ({ ...prev, bulkEmails: null }));
+        setBulkEmailText('');
+      }
+
+      if (validEmails.length > 0) {
+        setFormData(prev => ({ ...prev, studentEmails: [...prev.studentEmails, ...validEmails] }));
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Add Students</h2>
+
+        {/* Single Email Input */}
+        <div>
+          <label htmlFor="emailInput" className="block text-sm font-medium text-gray-700 mb-1">
+            Student Email
+          </label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaEnvelope className="w-4 h-4 text-gray-400" />
+              </div>
+              <input
+                type="email"
+                id="emailInput"
+                name="emailInput"
+                value={formData.emailInput}
+                onChange={handleInputChange}
+                onKeyPress={handleEmailKeyPress}
+                placeholder="Enter student email and press Enter"
+                className={`w-full pl-10 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors ${
+                  errors.emailInput ? 'border-red-500' : 'border-gray-300'
+                }`}
+              />
             </div>
-            <input
-              type="email"
-              id="emailInput"
-              name="emailInput"
-              value={formData.emailInput}
-              onChange={handleInputChange}
-              onKeyPress={handleEmailKeyPress}
-              placeholder="Enter student email and press Enter"
-              className={`w-full pl-10 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors ${
-                errors.emailInput ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
+            <button
+              type="button"
+              onClick={addEmail}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+            >
+              <FaPlus className="w-4 h-4 mr-2" />
+              Add
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={addEmail}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
-          >
-            <FaPlus className="w-4 h-4 mr-2" />
-            Add
-          </button>
+          {renderError('emailInput')}
         </div>
-        {renderError('emailInput')}
-      </div>
 
-      {/* Bulk Email Input */}
-      <div>
-        <label htmlFor="bulkEmails" className="block text-sm font-medium text-gray-700 mb-1">
-          Bulk Add Emails
-        </label>
-        <textarea
-          id="bulkEmails"
-          placeholder="Paste multiple email addresses (one per line or comma-separated)"
-          rows={4}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors resize-none"
-          onBlur={(e) => {
-            const emails = e.target.value.split(/[\n,]/).map(email => email.trim()).filter(email => email);
-            const uniqueEmails = [...new Set([...formData.studentEmails, ...emails])];
-            setFormData(prev => ({ ...prev, studentEmails: uniqueEmails }));
-          }}
-        />
-        <p className="mt-1 text-sm text-gray-500">
-          Paste multiple emails separated by commas or new lines
-        </p>
-      </div>
+        {/* Bulk Email Input */}
+        <div>
+          <label htmlFor="bulkEmails" className="block text-sm font-medium text-gray-700 mb-1">
+            Bulk Add Emails
+          </label>
+          <textarea
+            key="bulk-emails-textarea"
+            id="bulkEmails"
+            ref={bulkEmailsRef}
+            value={bulkEmailText}
+            onChange={(e) => setBulkEmailText(e.target.value)}
+            placeholder="Paste multiple email addresses (one per line or comma-separated)"
+            rows={4}
+            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors resize-none ${
+              errors.bulkEmails ? 'border-red-500' : 'border-gray-300'
+            }`}
+            onBlur={handleBulkEmailsBlur}
+          />
+          {renderError('bulkEmails')}
+          <p className="mt-1 text-sm text-gray-500">
+            Paste multiple emails separated by commas or new lines. Invalid emails will not be added.
+          </p>
+        </div>
 
-      {/* Email List */}
-      <div>
-        <h3 className="text-sm font-medium text-gray-700 mb-2">
-          Added Students ({formData.studentEmails.length})
-        </h3>
-        {formData.studentEmails.length === 0 ? (
-          <div className="bg-gray-50 rounded-lg p-8 text-center">
-            <FaEnvelope className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">No students added yet</p>
-          </div>
-        ) : (
-          <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-            <ul className="space-y-2">
-              {formData.studentEmails.map((email, index) => (
-                <li key={index} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg shadow-sm">
-                  <span className="text-sm text-gray-700">{email}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeEmail(email)}
-                    className="text-red-500 hover:text-red-700 transition-colors"
-                  >
-                    <FaTrash className="w-4 h-4" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {renderError('studentEmails')}
+        {/* Email List */}
+        <div>
+          <h3 className="text-sm font-medium text-gray-700 mb-2">
+            Added Students ({formData.studentEmails.length})
+          </h3>
+          {formData.studentEmails.length === 0 ? (
+            <div className="bg-gray-50 rounded-lg p-8 text-center">
+              <FaEnvelope className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">No students added yet</p>
+            </div>
+          ) : (
+            <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+              <ul className="space-y-2">
+                {formData.studentEmails.map((email, index) => (
+                  <li key={index} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg shadow-sm">
+                    <span className="text-sm text-gray-700">{email}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeEmail(email)}
+                      className="text-red-500 hover:text-red-700 transition-colors"
+                    >
+                      <FaTrash className="w-4 h-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {renderError('studentEmails')}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Step 3: Questions Form
   const renderStep3 = () => (
@@ -799,27 +1058,21 @@ export default function CreateExam({ render }) {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-500">Title</p>
-              <p className="font-medium text-gray-900">{formData.title || '-'}</p>
+              <p className="text-sm text-gray-500">Start Time</p>
+              <p className="font-medium text-gray-900">{formData.startTime || '-'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">End Time</p>
+              <p className="font-medium text-gray-900">{formData.endTime || '-'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Duration</p>
               <p className="font-medium text-gray-900">{formData.duration} minutes</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Start Date & Time</p>
+              <p className="text-sm text-gray-500">Date</p>
               <p className="font-medium text-gray-900">
-                {formData.startDate && formData.startTime 
-                  ? `${formData.startDate} at ${formData.startTime}` 
-                  : '-'}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">End Date & Time</p>
-              <p className="font-medium text-gray-900">
-                {formData.endDate && formData.endTime 
-                  ? `${formData.endDate} at ${formData.endTime}` 
-                  : '-'}
+                {formData.startDate || '-'}
               </p>
             </div>
           </div>
@@ -866,15 +1119,9 @@ export default function CreateExam({ render }) {
             </div>
             <div className="bg-blue-50 rounded-lg p-4 text-center">
               <p className="text-2xl font-bold text-blue-600">
-                {formData.questions.filter(q => q.questionType === 'multiple_choice').length}
+                {formData.questions.length}
               </p>
               <p className="text-sm text-gray-600">Multiple Choice</p>
-            </div>
-            <div className="bg-yellow-50 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-yellow-600">
-                {formData.questions.filter(q => q.questionType === 'true_false').length}
-              </p>
-              <p className="text-sm text-gray-600">True/False</p>
             </div>
           </div>
         </div>
@@ -884,7 +1131,12 @@ export default function CreateExam({ render }) {
           <button
             type="button"
             onClick={handleSaveDraft}
-            className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center"
+            disabled={isSubmitting}
+            className={`px-6 py-3 rounded-lg transition-colors flex items-center justify-center ${
+              isSubmitting 
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
           >
             <FaSave className="w-4 h-4 mr-2" />
             Save as Draft
@@ -892,7 +1144,12 @@ export default function CreateExam({ render }) {
           <button
             type="button"
             onClick={handlePublish}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
+            disabled={isSubmitting}
+            className={`px-6 py-3 rounded-lg transition-colors flex items-center justify-center ${
+              isSubmitting 
+                ? 'bg-green-400 text-white cursor-not-allowed'
+                : 'bg-green-600 text-white hover:bg-green-700'
+            }`}
           >
             <FaCloudUploadAlt className="w-4 h-4 mr-2" />
             Publish Exam
@@ -1023,8 +1280,77 @@ export default function CreateExam({ render }) {
 
 
 
-     
-      
+      {/* Submission Status Modal */}
+      {submissionStatus.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-md">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 flex flex-col items-center text-center animate-fade-in border border-gray-100" style={{ animation: 'fade-in 0.2s ease-out, scale-in 0.2s ease-out' }}>
+            {submissionStatus.type === 'loading' && (
+              <>
+                <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Creating your exam...</h3>
+                <p className="text-sm text-gray-500">Please wait...</p>
+              </>
+            )}
+            
+            {submissionStatus.type === 'success' && (
+              <>
+                <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-4">
+                  <FaCheck className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Exam Created Successfully</h3>
+                <p className="text-sm text-gray-500 mb-8">Your exam has been created and published successfully.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSubmissionStatus(prev => ({ ...prev, isOpen: false }));
+                    if (render) render('My Exams');
+                  }}
+                  className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors text-sm shadow-sm"
+                >
+                  Go to My Exams
+                </button>
+              </>
+            )}
+
+            {submissionStatus.type === 'error' && (
+              <>
+                <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+                  <FaExclamationCircle className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Error</h3>
+                <p className="text-sm text-gray-500 mb-6">{submissionStatus.message || 'Failed to create exam. Please try again'}</p>
+                <button
+                  type="button"
+                  onClick={() => setSubmissionStatus(prev => ({ ...prev, isOpen: false }))}
+                  className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors text-sm shadow-sm"
+                >
+                  Try Again
+                </button>
+              </>
+            )}
+
+            {submissionStatus.type === 'duplicate' && (
+              <>
+                <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mb-4">
+                  <FaExclamationCircle className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Already Created</h3>
+                <p className="text-sm text-gray-500 mb-6">{submissionStatus.message || 'Exam is already created'}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSubmissionStatus(prev => ({ ...prev, isOpen: false }));
+                    if (render) render('My Exams');
+                  }}
+                  className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors text-sm shadow-sm"
+                >
+                  Go to My Exams
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
