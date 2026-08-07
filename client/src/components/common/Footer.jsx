@@ -176,11 +176,9 @@ export default function Footer() {
             </p>
 
             <form className="mt-6">
-            
-
               <button
                 type="submit"
-                className="inline-flex items-center justify-center px-18 py-4 mt-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                className="w-full sm:w-auto inline-flex items-center justify-center px-6 sm:px-12 py-4 mt-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700"
               >
                 Explore
               </button>

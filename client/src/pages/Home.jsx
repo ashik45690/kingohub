@@ -1,18 +1,14 @@
 import Feature from "../components/common/Feature";
 import Footer from "../components/common/Footer";
-import Navbar from "../components/common/Navbar";
 import heroImage from '../assets/images/hero.png'
 import { useEffect, useRef } from "react";
 import gsap from 'gsap'
 import GoogleAuthLogin from "../components/Authentication/GoogleLogin";
-import { useNavigate } from "react-router-dom";
 import authService from "../services/authService";
 
 
 
 export default function Home() {
-
- const navigate = useNavigate()
 
   const containerref = useRef();
 
@@ -68,7 +64,6 @@ export default function Home() {
   return (
     <>
       <div className="bg-white" ref={containerref}>
-        <Navbar/>
         <section className="bg-white bg-opacity-30 py-10 sm:py-16 lg:py-24">
           <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
             <div className="grid items-center grid-cols-1 gap-12 lg:grid-cols-2">

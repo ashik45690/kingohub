@@ -1,6 +1,6 @@
 import { IoLogOutOutline } from "react-icons/io5";
 import { FaHome, FaBook, FaClipboardList, FaUserCircle } from "react-icons/fa";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -38,26 +38,48 @@ export default function Dashboard() {
     navigate("/");
   }
 
+  // Prevent body scroll while the drawer is open (mobile/tablet)
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [sidebarOpen]);
+
+  // Close the drawer on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') closeSidebar();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
 
     <div className="flex min-h-screen bg-gray-50">
 
-      {/* Mobile Overlay */}
+      {/* Mobile & Tablet Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/20 md:hidden z-30"
+          className="fixed inset-0 bg-black/20 lg:hidden z-30"
           onClick={closeSidebar}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — drawer on mobile/tablet, fixed on desktop */}
       <div
         className={`
-        fixed md:relative z-40
-        w-64 bg-white h-screen
-        transform transition-transform duration-300
+        fixed lg:sticky lg:top-0 lg:self-start z-40
+        w-64 bg-white min-h-screen
+        transform transition-transform duration-300 ease-in-out
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-        md:translate-x-0
+        lg:translate-x-0
+        overflow-y-auto
         `}
       >
 
@@ -156,7 +178,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
 
         {/* Mobile Navbar */}
         <Navbar toggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
@@ -191,10 +213,10 @@ export default function Dashboard() {
 
       </div>
 
-      {/* Logout Confirmation Modal */}
+{/* Logout Confirmation Modal */}
       {showLogoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 flex flex-col items-center text-center border border-gray-100 animate-scale-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-sm w-full max-h-[90vh] overflow-y-auto flex flex-col items-center text-center border border-gray-100 animate-scale-in">
             {/* Icon */}
             <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-4">
               <IoLogOutOutline className="text-red-500 text-2xl" />

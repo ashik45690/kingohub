@@ -909,8 +909,8 @@ export default function CreateExam({ render }) {
           <label htmlFor="emailInput" className="block text-sm font-medium text-gray-700 mb-1">
             Student Email
           </label>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1 min-w-0">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <FaEnvelope className="w-4 h-4 text-gray-400" />
               </div>
@@ -930,7 +930,7 @@ export default function CreateExam({ render }) {
             <button
               type="button"
               onClick={addEmail}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center shrink-0"
             >
               <FaPlus className="w-4 h-4 mr-2" />
               Add
@@ -977,12 +977,12 @@ export default function CreateExam({ render }) {
             <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
               <ul className="space-y-2">
                 {formData.studentEmails.map((email, index) => (
-                  <li key={index} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg shadow-sm">
-                    <span className="text-sm text-gray-700">{email}</span>
+                  <li key={index} className="flex items-center justify-between gap-2 bg-white px-3 py-2 rounded-lg shadow-sm min-w-0">
+                    <span className="text-sm text-gray-700 truncate">{email}</span>
                     <button
                       type="button"
                       onClick={() => removeEmail(email)}
-                      className="text-red-500 hover:text-red-700 transition-colors"
+                      className="text-red-500 hover:text-red-700 transition-colors shrink-0 p-1"
                     >
                       <FaTrash className="w-4 h-4" />
                     </button>
@@ -1176,7 +1176,7 @@ export default function CreateExam({ render }) {
   };
 
   return (
-    <div className="p-6 flex-1 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 flex-1 min-w-0 w-full bg-gray-50 min-h-screen">
       {/* Header */}
 
 
@@ -1196,18 +1196,18 @@ export default function CreateExam({ render }) {
       
 
       {/* Progress Steps */}
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-        <div className="flex items-center justify-between">
+      <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+        <div className="flex items-center justify-between overflow-x-auto pb-2">
           {STEPS.map((step, index) => {
             const Icon = step.icon;
             const isActive = step.id === currentStep;
             const isCompleted = step.id < currentStep;
             
             return (
-              <div key={step.id} className="flex items-center">
-                <div className="flex flex-col items-center">
+              <div key={step.id} className="flex items-center flex-1 min-w-[70px] sm:min-w-0">
+                <div className="flex flex-col items-center w-full">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors shrink-0 ${
                       isActive
                         ? 'bg-indigo-600 text-white'
                         : isCompleted
@@ -1215,9 +1215,9 @@ export default function CreateExam({ render }) {
                         : 'bg-gray-200 text-gray-500'
                     }`}
                   >
-                    {isCompleted ? <FaCheck className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                    {isCompleted ? <FaCheck className="w-5 h-5" /> : <Icon className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </div>
-                  <span className={`mt-2 text-xs font-medium ${isActive || isCompleted ? 'text-indigo-600' : 'text-gray-500'}`}>
+                  <span className={`mt-2 text-[10px] sm:text-xs font-medium text-center ${isActive || isCompleted ? 'text-indigo-600' : 'text-gray-500'}`}>
                     {step.title}
                   </span>
                 </div>
@@ -1231,8 +1231,8 @@ export default function CreateExam({ render }) {
 
 
 
-      {/* Form Content */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
+{/* Form Content */}
+      <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
         {renderCurrentStep()}
       </div>
 
@@ -1241,12 +1241,12 @@ export default function CreateExam({ render }) {
 
 
       {/* Navigation Buttons */}
-      <div className="mt-6 flex justify-between">
+      <div className="mt-6 flex justify-between gap-3">
         <button
           type="button"
           onClick={handleBack}
           disabled={currentStep === 1}
-          className={`px-6 py-3 rounded-lg flex items-center transition-colors ${
+          className={`flex-1 sm:flex-none px-6 py-3 rounded-lg flex items-center justify-center transition-colors ${
             currentStep === 1
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -1260,7 +1260,7 @@ export default function CreateExam({ render }) {
           <button
             type="button"
             onClick={handleNext}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+            className="flex-1 sm:flex-none px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center"
           >
             Next
             <FaArrowRight className="w-4 h-4 ml-2" />
@@ -1283,7 +1283,7 @@ export default function CreateExam({ render }) {
       {/* Submission Status Modal */}
       {submissionStatus.isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-md">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 flex flex-col items-center text-center animate-fade-in border border-gray-100" style={{ animation: 'fade-in 0.2s ease-out, scale-in 0.2s ease-out' }}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto flex flex-col items-center text-center animate-fade-in border border-gray-100" style={{ animation: 'fade-in 0.2s ease-out, scale-in 0.2s ease-out' }}>
             {submissionStatus.type === 'loading' && (
               <>
                 <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>

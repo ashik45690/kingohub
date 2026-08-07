@@ -26,13 +26,13 @@ import BackButton from '../common/BackButton';
 
 function StatCard({ icon: Icon, label, value, colorClass }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-md transition-shadow min-w-0">
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${colorClass}`}>
         <Icon className="w-5 h-5" />
       </div>
-      <div>
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{label}</p>
-        <p className="text-xl font-bold text-gray-900 mt-0.5">{value}</p>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider truncate">{label}</p>
+        <p className="text-lg sm:text-xl font-bold text-gray-900 mt-0.5 break-words">{value}</p>
       </div>
     </div>
   );
@@ -40,13 +40,13 @@ function StatCard({ icon: Icon, label, value, colorClass }) {
 
 function InfoRow({ icon: Icon, label, value }) {
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0">
+    <div className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0 min-w-0">
       <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0 mt-0.5">
         <Icon className="w-3.5 h-3.5 text-indigo-600" />
       </div>
-      <div>
+      <div className="min-w-0">
         <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</p>
-        <p className="text-sm font-semibold text-gray-800 mt-0.5">{value}</p>
+        <p className="text-sm font-semibold text-gray-800 mt-0.5 break-words">{value}</p>
       </div>
     </div>
   );

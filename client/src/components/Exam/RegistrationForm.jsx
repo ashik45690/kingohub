@@ -28,45 +28,45 @@ export default function RegistrationForm({ examId, onRegistrationSuccess, examTi
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-8 max-w-2xl mx-auto my-8">
+    <div className="bg-white rounded-lg shadow-md p-5 sm:p-8 max-w-2xl my-8 mx-4 sm:mx-auto">
       <div className="text-center mb-8">
         <div className="flex items-center justify-center w-16 h-16 bg-indigo-50 rounded-full mx-auto mb-4">
           <FaShieldAlt className="w-8 h-8 text-indigo-600" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900">Exam Registration</h2>
-        <p className="text-gray-500 mt-2">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">Exam Registration</h2>
+        <p className="text-gray-500 mt-2 text-sm sm:text-base">
           You are registering for:{' '}
           <span className="font-semibold text-indigo-600">{examTitle}</span>
         </p>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-lg">
+        <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-lg break-words">
           {error}
         </div>
       )}
 
       {/* Read-only student identity from session */}
-      <div className="bg-gray-50 rounded-lg p-6 mb-6 space-y-4">
+      <div className="bg-gray-50 rounded-lg p-5 sm:p-6 mb-6 space-y-4">
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">
           Your registered identity
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
             <FaUserCheck className="text-indigo-600 w-4 h-4" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-gray-400">Full Name</p>
-            <p className="text-sm font-semibold text-gray-800">{user?.name || '—'}</p>
+            <p className="text-sm font-semibold text-gray-800 break-words">{user?.name || '—'}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
             <FaEnvelope className="text-indigo-600 w-4 h-4" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-gray-400">Email Address</p>
-            <p className="text-sm font-semibold text-gray-800">{user?.email || '—'}</p>
+            <p className="text-sm font-semibold text-gray-800 break-words">{user?.email || '—'}</p>
           </div>
         </div>
       </div>

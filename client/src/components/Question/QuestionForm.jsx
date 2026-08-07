@@ -16,7 +16,7 @@ export default function QuestionForm({ onSave, onCancel, initialData }) {
     options: initialData?.options || ['', '', '', ''],
     correctAnswer: initialData?.correctAnswer ?? null,
     points: initialData?.points || 1
-  });
+  }); 
 
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -182,19 +182,19 @@ export default function QuestionForm({ onSave, onCancel, initialData }) {
         
         <div className="space-y-3">
           {formData.options.map((option, index) => (
-            <div key={index} className="flex items-center gap-3">
+            <div key={index} className="flex items-center gap-2 sm:gap-3 w-full min-w-0">
               {/* Radio button for correct answer */}
               <input
                 type="radio"
                 name="correctAnswer"
                 checked={formData.correctAnswer === index}
                 onChange={() => handleCorrectAnswerChange(index)}
-                className="w-5 h-5 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                className="w-5 h-5 min-w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300"
                 disabled={formData.questionType !== 'multiple_choice'}
               />
               
               {/* Option label (A, B, C, D) */}
-              <span className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full text-sm font-medium text-gray-700">
+              <span className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center bg-gray-100 rounded-full text-sm font-medium text-gray-700">
                 {getOptionLabel(index)}
               </span>
               
@@ -204,7 +204,7 @@ export default function QuestionForm({ onSave, onCancel, initialData }) {
                 value={option}
                 onChange={(e) => handleOptionChange(index, e.target.value)}
                 placeholder={`Option ${index + 1}`}
-                className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors ${
+                className={`flex-1 min-w-0 px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors ${
                   errors[`option_${index}`] ? 'border-red-500' : 'border-gray-300'
                 }`}
                 disabled={formData.questionType !== 'multiple_choice'}
@@ -212,7 +212,7 @@ export default function QuestionForm({ onSave, onCancel, initialData }) {
               
               {/* Show check icon if this is the correct answer */}
               {formData.correctAnswer === index && (
-                <FaCheckCircle className="w-5 h-5 text-green-500" />
+                <FaCheckCircle className="w-5 h-5 min-w-5 text-green-500 flex-shrink-0" />
               )}
             </div>
           ))}
@@ -227,11 +227,11 @@ export default function QuestionForm({ onSave, onCancel, initialData }) {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+      <div className="flex flex-col sm:flex-row items-stretch justify-end gap-3 pt-4 border-t border-gray-200">
         <button
           type="button"
           onClick={handleCancel}
-          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center"
+          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
         >
           <FaTrash className="w-4 h-4 mr-2" />
           Cancel
@@ -240,7 +240,7 @@ export default function QuestionForm({ onSave, onCancel, initialData }) {
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSaving ? (
             <>

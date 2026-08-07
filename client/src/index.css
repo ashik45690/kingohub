@@ -22,3 +22,36 @@
 .animate-scale-in {
   animation: scale-in 0.2s ease-out;
 }
+
+/* Global horizontal-overflow guard (clip preserves sticky positioning) */
+html,
+body {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+/* Allow long words / URLs to wrap instead of overflowing */
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+span,
+a,
+li,
+td,
+th {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Hide scrollbars while keeping scrollability (used in TakeExam progress nav) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

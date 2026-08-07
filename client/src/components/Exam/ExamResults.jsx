@@ -176,14 +176,14 @@ export default function ExamResults() {
   }
 
   return (
-    <div className="p-6 flex-1 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 flex-1 bg-gray-50 min-h-screen overflow-x-hidden">
       {/* Header */}
       <div className="mb-6">
         <BackButton
           label="Back to Dashboard"
           className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
         />
-        <h1 className="text-2xl font-bold text-gray-900">{result.examTitle}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 break-words">{result.examTitle}</h1>
         <p className="text-sm text-gray-500 mt-1">
           Exam Results
         </p>
@@ -191,7 +191,7 @@ export default function ExamResults() {
 
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Main Result Card */}
-        <div className="bg-white rounded-lg shadow-sm p-8">
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8">
           {/* Performance Message */}
           <div className={`text-center mb-8 ${isAnimating ? 'animate-fade-in' : ''}`}>
             <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
@@ -278,7 +278,7 @@ export default function ExamResults() {
             {/* Time Taken */}
             <div className="bg-blue-50 rounded-lg p-4 text-center">
               <p className="text-sm text-blue-600 mb-1">Time Taken</p>
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-lg sm:text-2xl font-bold text-blue-600 break-words">
                 {formatTimeTaken(result.timeTaken)}
               </p>
               <p className="text-xs text-blue-500">of {result.timeLimit} min</p>
@@ -340,12 +340,12 @@ export default function ExamResults() {
               <span className="font-medium text-gray-900">{result.wrongAnswers}</span>
             </div>
             
-            <div className="flex items-center justify-between py-3 border-b border-gray-100">
-              <div className="flex items-center">
-                <FaClock className="w-5 h-5 text-blue-500 mr-3" />
+            <div className="flex items-center justify-between gap-4 py-3 border-b border-gray-100">
+              <div className="flex items-center min-w-0">
+                <FaClock className="w-5 h-5 text-blue-500 mr-3 flex-shrink-0" />
                 <span className="text-gray-700">Time Used</span>
               </div>
-              <span className="font-medium text-gray-900">
+              <span className="font-medium text-gray-900 text-right text-sm break-words">
                 {formatTimeTaken(result.timeTaken)} / {result.timeLimit} minutes
               </span>
             </div>

@@ -127,7 +127,7 @@ export default function QuestionLists({
                 : 'border-gray-200 hover:border-gray-300'
             }`}
           >
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-3 sm:gap-4 w-full min-w-0">
               {/* Drag Handle */}
               {isEditable && (
                 <div className="flex-shrink-0 mt-1 text-gray-400 hover:text-gray-600">
@@ -137,7 +137,7 @@ export default function QuestionLists({
 
               {/* Question Number */}
               <div className="flex-shrink-0">
-                <span className="inline-flex items-center justify-center w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full text-sm font-medium">
+                <span className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-indigo-100 text-indigo-600 rounded-full text-sm font-medium">
                   {index + 1}
                 </span>
               </div>
@@ -145,7 +145,7 @@ export default function QuestionLists({
               {/* Question Content */}
               <div className="flex-1 min-w-0">
                 {/* Question Type Badge */}
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   {getQuestionTypeIcon(question.questionType)}
                   <span className="text-xs font-medium text-gray-500">
                     {getQuestionTypeLabel(question.questionType)}
@@ -157,7 +157,7 @@ export default function QuestionLists({
                 </div>
 
                 {/* Question Text */}
-                <p className="text-gray-900 font-medium mb-2">
+                <p className="text-gray-900 font-medium mb-2 break-words">
                   {question.questionText || 'Untitled Question'}
                 </p>
 
@@ -174,14 +174,14 @@ export default function QuestionLists({
                         }`}
                       >
                         {question.correctAnswer === optIndex ? (
-                          <FaCheckCircle className="w-3 h-3 text-green-500" />
+                          <FaCheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
                         ) : (
-                          <FaTimesCircle className="w-3 h-3 text-gray-300" />
+                          <FaTimesCircle className="w-3 h-3 text-gray-300 flex-shrink-0" />
                         )}
-                        <span className="w-5">
+                        <span className="w-5 flex-shrink-0">
                           {String.fromCharCode(65 + optIndex)}.
                         </span>
-                        <span>{option || '(Empty)'}</span>
+                        <span className="truncate">{option || '(Empty)'}</span>
                       </div>
                     ))}
                   </div>
@@ -215,7 +215,7 @@ export default function QuestionLists({
 
               {/* Actions */}
               {isEditable && (
-                <div className="flex-shrink-0 flex items-center gap-2">
+                <div className="flex-shrink-0 flex items-center gap-1">
                   <button
                     onClick={() => onEdit && onEdit(question, index)}
                     className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"

@@ -381,7 +381,7 @@ export default function TakeExam() {
               }`}
             >
               {index + 1}
-            </button>
+            </button>  
           ))}
         </div>
         <div className="mt-4 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
@@ -393,7 +393,7 @@ export default function TakeExam() {
       </div>
 
       {/* Question Card */}
-      <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8 md:p-12 mb-8 transition-all duration-300">
+      <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-6 sm:p-8 md:p-12 mb-8 transition-all duration-300">
         <div className="mb-10">
           <div className="flex justify-between items-center mb-6">
             <span className="inline-flex items-center px-4 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold uppercase tracking-widest">
@@ -413,7 +413,7 @@ export default function TakeExam() {
           {(currentQuestion?.options || []).map((option, index) => (
             <label
               key={index}
-              className={`flex items-center gap-6 p-6 border-3 rounded-[1.5rem] cursor-pointer transition-all duration-200 group relative ${
+              className={`flex items-center gap-4 sm:gap-6 p-4 sm:p-6 min-w-0 border-3 rounded-[1.5rem] cursor-pointer transition-all duration-200 group relative ${
                 answers[currentQuestion._id] === index
                   ? 'border-indigo-600 bg-indigo-50/50 shadow-lg shadow-indigo-50 transform scale-[1.01]'
                   : 'border-gray-50 bg-gray-50/50 hover:border-gray-200 hover:bg-white'
@@ -433,7 +433,7 @@ export default function TakeExam() {
               }`}>
                 {getOptionLabel(index)}
               </div>
-              <span className={`text-lg transition-colors flex-1 ${
+<span className={`text-base sm:text-lg transition-colors flex-1 min-w-0 break-words ${
                 answers[currentQuestion._id] === index ? 'text-indigo-900 font-black' : 'text-gray-600 font-medium'
               }`}>
                 {option}
@@ -484,7 +484,7 @@ export default function TakeExam() {
       {/* Modals */}
       {showWarning && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-3xl p-10 max-w-sm w-full animate-bounce shadow-2xl border-t-8 border-red-500">
+<div className="bg-white rounded-3xl p-6 sm:p-10 max-w-sm w-full animate-bounce shadow-2xl border-t-8 border-red-500 max-h-[90vh] overflow-y-auto">
             <div className="text-center">
               <FaClock className="w-16 h-16 text-red-500 mx-auto mb-6" />
               <h3 className="text-3xl font-black text-gray-900 mb-2">5 MINUTES!</h3>
@@ -496,18 +496,18 @@ export default function TakeExam() {
 
       {showConfirmSubmit && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl relative overflow-hidden">
+          <div className="bg-white rounded-[2.5rem] max-h-[90vh] overflow-y-auto w-full max-w-md shadow-2xl relative p-6 sm:p-10">
             <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-green-400 to-green-600"></div>
-            <h3 className="text-3xl font-black text-gray-900 mb-8 mt-4">Submit Exam?</h3>
+            <h3 className="text-2xl sm:text-3xl font-black text-gray-900 mb-6 sm:mb-8 mt-4">Submit Exam?</h3>
             
-            <div className="space-y-4 mb-10">
-              <div className="flex items-center justify-between p-6 bg-gray-50 rounded-[1.5rem]">
+            <div className="space-y-4 mb-8 sm:mb-10">
+              <div className="flex items-center justify-between p-4 sm:p-6 bg-gray-50 rounded-[1.5rem] gap-4">
                  <span className="text-gray-500 font-bold uppercase text-xs tracking-widest">Completed</span>
-                 <span className="font-black text-indigo-600 text-3xl">{Object.keys(answers).length} <span className="text-sm font-medium text-gray-400">/ {shuffledQuestions.length}</span></span>
+                 <span className="font-black text-indigo-600 text-3xl whitespace-nowrap">{Object.keys(answers).length} <span className="text-sm font-medium text-gray-400">/ {shuffledQuestions.length}</span></span>
               </div>
               
               {Object.keys(answers).length < shuffledQuestions.length && (
-                <div className="p-6 bg-red-50 border border-red-100 rounded-[1.5rem] flex items-center gap-4 text-red-800">
+                <div className="p-4 sm:p-6 bg-red-50 border border-red-100 rounded-[1.5rem] flex items-center gap-4 text-red-800">
                   <FaExclamationTriangle className="w-8 h-8 shrink-0 animate-pulse" />
                   <p className="text-sm font-black leading-tight uppercase">
                     Careful! You still have {shuffledQuestions.length - Object.keys(answers).length} questions left.
@@ -517,10 +517,10 @@ export default function TakeExam() {
             </div>
 
             <div className="flex flex-col gap-4">
-              <button onClick={() => setShowConfirmSubmit(false)} className="w-full py-5 bg-gray-100 text-gray-600 rounded-2xl font-black hover:bg-gray-200 transition-colors">
+              <button onClick={() => setShowConfirmSubmit(false)} className="w-full py-4 sm:py-5 bg-gray-100 text-gray-600 rounded-2xl font-black hover:bg-gray-200 transition-colors">
                 GO BACK & CHECK
               </button>
-              <button onClick={handleConfirmSubmit} className="w-full py-5 bg-green-500 text-white rounded-2xl font-black hover:bg-green-600 shadow-xl transition-all transform hover:scale-[1.02]">
+              <button onClick={handleConfirmSubmit} className="w-full py-4 sm:py-5 bg-green-500 text-white rounded-2xl font-black hover:bg-green-600 shadow-xl transition-all transform hover:scale-[1.02]">
                 YES, SUBMIT NOW
               </button>
             </div>

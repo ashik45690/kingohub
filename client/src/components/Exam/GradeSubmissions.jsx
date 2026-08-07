@@ -58,9 +58,9 @@ export default function GradeSubmissions({ examId, onBack }) {
 
   if (loading) return <div className="p-8 text-center text-premium">Loading submissions...</div>;
 
-  if (selectedSubmission) {
+if (selectedSubmission) {
     return (
-      <div className="p-6 bg-white rounded-xl shadow-lg">
+      <div className="p-4 sm:p-6 bg-white rounded-xl shadow-lg">
         <button 
           onClick={() => setSelectedSubmission(null)}
           className="flex items-center text-indigo-600 hover:text-indigo-800 mb-6 font-medium"
@@ -68,7 +68,7 @@ export default function GradeSubmissions({ examId, onBack }) {
           <FaArrowLeft className="mr-2" /> Back to Submissions
         </button>
 
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 break-words">
           Grading: {selectedSubmission.userId?.name || 'Candidate'}
         </h2>
 
@@ -78,14 +78,14 @@ export default function GradeSubmissions({ examId, onBack }) {
             if (!isDescriptive) return null;
 
             return (
-              <div key={index} className="border-l-4 border-indigo-500 pl-6 py-2 bg-gray-50 rounded-r-lg">
+              <div key={index} className="border-l-4 border-indigo-500 pl-4 sm:pl-6 py-2 bg-gray-50 rounded-r-lg min-w-0">
                 <p className="text-sm font-bold text-indigo-600 uppercase tracking-wider mb-2">Question {index + 1}</p>
-                <p className="text-lg text-gray-900 font-medium mb-4">{answer.questionId?.questionText}</p>
-                <div className="bg-white p-4 rounded-lg border border-gray-200 mb-4 whitespace-pre-wrap text-gray-700">
+                <p className="text-lg text-gray-900 font-medium mb-4 break-words">{answer.questionId?.questionText}</p>
+                <div className="bg-white p-4 rounded-lg border border-gray-200 mb-4 whitespace-pre-wrap text-gray-700 break-words">
                   <p className="text-xs text-gray-400 mb-2 font-bold uppercase">Candidate's Answer:</p>
                   {answer.descriptiveAnswer}
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                   <label className="text-sm font-bold text-gray-700">Marks Awarded:</label>
                   <input 
                     type="number"
@@ -105,7 +105,7 @@ export default function GradeSubmissions({ examId, onBack }) {
         <div className="mt-10 flex justify-end">
           <button
             onClick={submitGrades}
-            className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-md"
+            className="w-full sm:w-auto px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-md"
           >
             Submit Grades
           </button>
@@ -115,9 +115,9 @@ export default function GradeSubmissions({ examId, onBack }) {
   }
 
   return (
-    <div className="p-6 bg-white rounded-xl shadow-lg text-premium">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">Exam Submissions</h2>
+    <div className="p-4 sm:p-6 bg-white rounded-xl shadow-lg text-premium min-w-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Exam Submissions</h2>
         <button onClick={onBack} className="text-gray-500 hover:text-gray-700 font-medium">Back to Exams</button>
       </div>
 

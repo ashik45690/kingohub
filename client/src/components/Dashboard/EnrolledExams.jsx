@@ -126,18 +126,18 @@ export default function EnrolledExams() {
   };
 
   return (
-    <div className="p-6 flex-1">
+    <div className="p-4 sm:p-6 flex-1 min-w-0 w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Enrolled Exams</h1>
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Enrolled Exams</h1>
           <p className="text-sm text-gray-500 mt-1">View and take your enrolled exams</p>
         </div>
       </div>
 
       {/* Search / Join by Code */}
       <div className="mb-6">
-        <div className="relative max-w-md">
+        <div className="relative w-full max-w-md">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             {joiningCode ? (
               <FaSpinner className="w-4 h-4 text-indigo-400 animate-spin" />
