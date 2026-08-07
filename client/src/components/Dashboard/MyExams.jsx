@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FaEdit, FaEye, FaChartBar, FaPlus, FaSearch } from 'react-icons/fa';
 import examService from '../../services/examService';
+import { TableRowsSkeleton, CardSkeleton, FadeIn } from '../common/Loaders';
 
 export default function MyExams({render}) {
   const [exams, setExams] = useState([]);
@@ -9,6 +10,7 @@ export default function MyExams({render}) {
 useEffect(() => {
   const fetchMyExams = async () => {
     try {
+      setLoading(true);
       const res = await examService.getMyExams();
       setExams(Array.isArray(res) ? res : []);
     } catch (err) {
@@ -59,8 +61,8 @@ useEffect(() => {
     render('Dashboard');
   };
 
-  return (
-    <div className="p-4 sm:p-6 flex-1 min-w-0 w-full">
+return (
+    <FadeIn className="p-4 sm:p-6 flex-1 min-w-0 w-full">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div className="min-w-0">
@@ -117,8 +119,10 @@ useEffect(() => {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredExams.length > 0 && !loading ? (
+<tbody className="bg-white divide-y divide-gray-200">
+              {loading ? (
+                <TableRowsSkeleton rows={5} cols={6} />
+              ) : filteredExams.length > 0 ? (
                 filteredExams.map((exam) => (
                   <tr key={exam._id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -192,25 +196,35 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Summary Stats */}
+{/* Summary Stats */}
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm font-medium text-gray-500">Total Exams</div>
-          <div className="text-2xl font-bold text-gray-900 mt-1">{exams.length}</div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm font-medium text-gray-500">Published</div>
-          <div className="text-2xl font-bold text-green-600 mt-1">
-            {exams.filter((e) => e.status === 'published').length}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm font-medium text-gray-500">Drafts</div>
-          <div className="text-2xl font-bold text-yellow-600 mt-1">
-            {exams.filter((e) => e.status === 'draft').length}
-          </div>
-        </div>
+        {loading ? (
+          <>
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </>
+        ) : (
+          <>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-sm font-medium text-gray-500">Total Exams</div>
+              <div className="text-2xl font-bold text-gray-900 mt-1">{exams.length}</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-sm font-medium text-gray-500">Published</div>
+              <div className="text-2xl font-bold text-green-600 mt-1">
+                {exams.filter((e) => e.status === 'published').length}
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-sm font-medium text-gray-500">Drafts</div>
+              <div className="text-2xl font-bold text-yellow-600 mt-1">
+                {exams.filter((e) => e.status === 'draft').length}
+              </div>
+            </div>
+          </>
+        )}
       </div>
-    </div>
+    </FadeIn>
   );
 }

@@ -9,10 +9,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import dashboardService from "../../services/dashboardService";
+import { CardSkeleton, TableRowsSkeleton, Skeleton, FadeIn } from "../common/Loaders";
 
 export default function ExamAnalytics() {
   const [studentsData, setStudentsData] = useState([]);
   const [questionStats, setQuestionStats] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({
     totalStudents: 0,
     averageScore: 0,
@@ -24,6 +26,7 @@ export default function ExamAnalytics() {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
+        setLoading(true);
         const examId = localStorage.getItem('selectedExamId');
         const data = await dashboardService.getStats(examId);
 
@@ -47,6 +50,8 @@ export default function ExamAnalytics() {
         });
       } catch (err) {
         console.error("Failed to fetch analytics", err);
+      } finally {
+        setLoading(false);
       }
     };
     fetchAnalytics();
@@ -76,8 +81,49 @@ export default function ExamAnalytics() {
     setSortConfig({ key, direction });
   }
 
-return (
-    <>
+if (loading) {
+    return (
+      <div className="flex flex-col flex-1 min-w-0 px-4">
+        {/* Skeleton stat cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 mt-4">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+
+        {/* Skeleton table */}
+        <div className="mb-8">
+          <Skeleton className="h-6 w-40 mb-4" />
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full border min-w-[640px]">
+                <thead>
+                  <tr>
+                    {['Name', 'Email', 'Score', 'Percentage', 'Time Taken'].map((h) => (
+                      <th key={h} className="border p-2 text-left whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <TableRowsSkeleton rows={5} cols={5} />
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Skeleton chart */}
+        <div>
+          <Skeleton className="h-6 w-48 mb-4" />
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <FadeIn>
       <div className="flex flex-col flex-1 min-w-0 px-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 mt-4">
           <div className="bg-white shadow p-4 rounded">
@@ -108,21 +154,21 @@ return (
               <table className="w-full border min-w-[640px]">
                 <thead>
                   <tr>
-                    <th className="border p-2 text-left" onClick={() => sortTable("name")}>Name</th>
-                    <th className="border p-2 text-left" onClick={() => sortTable("email")}>Email</th>
-                    <th className="border p-2 text-left" onClick={() => sortTable("score")}>Score</th>
-                    <th className="border p-2 text-left" onClick={() => sortTable("percentage")}>Percentage</th>
-                    <th className="border p-2 text-left" onClick={() => sortTable("time")}>Time Taken</th>
+                    <th className="border p-2 text-left whitespace-nowrap" onClick={() => sortTable("name")}>Name</th>
+                    <th className="border p-2 text-left whitespace-nowrap" onClick={() => sortTable("email")}>Email</th>
+                    <th className="border p-2 text-left whitespace-nowrap" onClick={() => sortTable("score")}>Score</th>
+                    <th className="border p-2 text-left whitespace-nowrap" onClick={() => sortTable("percentage")}>Percentage</th>
+                    <th className="border p-2 text-left whitespace-nowrap" onClick={() => sortTable("time")}>Time Taken</th>
                   </tr>
                 </thead>
                 <tbody>
                   {studentsData.map((student, index) => (
                     <tr key={index}>
-                      <td className="border p-2">{student.name}</td>
+                      <td className="border p-2 table-cell-wrap">{student.name}</td>
                       <td className="border p-2">{student.email}</td>
                       <td className="border p-2">{student.score}</td>
                       <td className="border p-2">{student.percentage}%</td>
-                      <td className="border p-2">{student.time}</td>
+                      <td className="border p-2 whitespace-nowrap">{student.time}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -148,6 +194,6 @@ return (
           </ResponsiveContainer>
         </div>
       </div>
-    </>
+    </FadeIn>
   );
 }

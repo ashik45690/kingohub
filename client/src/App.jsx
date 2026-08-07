@@ -1,13 +1,38 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import TakeExam from "./components/Exam/TakeExam";
 import ExamResults from "./components/Exam/ExamResults";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 
-function App() {
+// Top progress bar shown briefly on every navigation (spinner during page navigation)
+function NavigationLoader() {
+  const location = useLocation();
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    setVisible(true);
+    const t = setTimeout(() => setVisible(false), 600);
+    return () => clearTimeout(t);
+  }, [location.pathname]);
+
   return (
-    <BrowserRouter>
+    <div className="fixed top-0 left-0 right-0 z-[999] h-1 pointer-events-none">
+      <div
+        className={`h-full bg-indigo-600 transition-all duration-500 ease-out ${
+          visible ? "w-full opacity-100" : "w-0 opacity-0"
+        }`}
+        style={{ width: visible ? "100%" : "0%" }}
+      />
+    </div>
+  );
+}
+
+function AppRoutes() {
+  return (
+    <>
+      <NavigationLoader />
       <Routes>
 
         <Route path="/" element={<Home />} />
@@ -27,7 +52,15 @@ function App() {
         {/* Catch-all: unknown paths redirect to home instead of a blank error */}
         <Route path="*" element={<Navigate to="/" replace />} />
 
-      </Routes>
+</Routes>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
     </BrowserRouter>
   );
 }

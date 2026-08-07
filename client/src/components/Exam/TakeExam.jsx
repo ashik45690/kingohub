@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import examService from '../../services/examService';
 import submissionService from '../../services/submissionService';
 import RegistrationForm from './RegistrationForm';
+import { PageLoader, FadeIn } from '../common/Loaders';
 
 export default function TakeExam() {
   const navigate = useNavigate();
@@ -204,15 +205,8 @@ export default function TakeExam() {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 flex-1 bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-gray-600 font-medium">Loading exam data...</p>
-        </div>
-      </div>
-    );
+if (loading) {
+    return <PageLoader label="Loading exam data..." />;
   }
 
   if (error) {
@@ -342,8 +336,8 @@ export default function TakeExam() {
     );
   }
 
-  return (
-    <div className="p-4 md:p-6 flex-1 bg-gray-50 min-h-screen font-sans">
+return (
+    <FadeIn className="p-4 md:p-6 flex-1 bg-gray-50 min-h-screen font-sans">
       {/* Header */}
       <div className="bg-white rounded-2xl shadow-sm p-4 mb-6 sticky top-0 md:top-4 z-10 border border-gray-100">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -520,13 +514,13 @@ export default function TakeExam() {
               <button onClick={() => setShowConfirmSubmit(false)} className="w-full py-4 sm:py-5 bg-gray-100 text-gray-600 rounded-2xl font-black hover:bg-gray-200 transition-colors">
                 GO BACK & CHECK
               </button>
-              <button onClick={handleConfirmSubmit} className="w-full py-4 sm:py-5 bg-green-500 text-white rounded-2xl font-black hover:bg-green-600 shadow-xl transition-all transform hover:scale-[1.02]">
+<button onClick={handleConfirmSubmit} className="w-full py-4 sm:py-5 bg-green-500 text-white rounded-2xl font-black hover:bg-green-600 shadow-xl transition-all transform hover:scale-[1.02]">
                 YES, SUBMIT NOW
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </FadeIn>
   );
 }

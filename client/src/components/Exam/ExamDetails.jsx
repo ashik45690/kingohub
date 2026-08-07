@@ -23,6 +23,7 @@ import examService from '../../services/examService';
 import submissionService from '../../services/submissionService';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../common/BackButton';
+import { PageLoader, FadeIn } from '../common/Loaders';
 
 function StatCard({ icon: Icon, label, value, colorClass }) {
   return (
@@ -211,14 +212,7 @@ export default function ExamDetails() {
   };
 
   if (loading) {
-    return (
-      <div className="p-6 flex-1 bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-gray-500 font-medium">Loading exam details...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Loading exam details..." />;
   }
 
   if (!exam) {
@@ -240,9 +234,9 @@ export default function ExamDetails() {
   // ─────────────────────────────────────────────────────────────
   //  CREATOR VIEW
   // ─────────────────────────────────────────────────────────────
-  if (isCreator) {
+if (isCreator) {
     return (
-      <div className="p-4 md:p-6 flex-1 bg-gray-50 min-h-screen">
+      <FadeIn className="p-4 md:p-6 flex-1 bg-gray-50 min-h-screen">
         {/* Back */}
         <BackButton
           label="Back to Exams"
@@ -370,7 +364,7 @@ export default function ExamDetails() {
                   <span className="text-gray-500">Time Status</span>
                   <StatusBadge status={exam.timeStatus === 'upcoming' ? 'upcoming' : exam.timeStatus === 'ongoing' ? 'available' : 'completed'} />
                 </div>
-                <div className="flex justify-between items-center text-sm">
+<div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500">Schedule</span>
                   <span className="text-gray-700 font-medium text-xs">{formatDate(exam.schedule)}</span>
                 </div>
@@ -378,7 +372,7 @@ export default function ExamDetails() {
             </div>
           </div>
         </div>
-      </div>
+      </FadeIn>
     );
   }
 
@@ -387,8 +381,8 @@ export default function ExamDetails() {
   // ─────────────────────────────────────────────────────────────
   const eConf = statusConfig[eligibility.status] || statusConfig.unknown;
 
-  return (
-    <div className="p-4 md:p-6 flex-1 bg-gray-50 min-h-screen">
+return (
+    <FadeIn className="p-4 md:p-6 flex-1 bg-gray-50 min-h-screen">
       {/* Back */}
       <BackButton
         label="Back to Exams"
@@ -651,6 +645,6 @@ export default function ExamDetails() {
           </div>
         </div>
       </div>
-    </div>
+    </FadeIn>
   );
 }

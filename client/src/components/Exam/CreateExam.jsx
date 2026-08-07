@@ -18,6 +18,7 @@ import QuestionForm from '../Question/QuestionForm';
 import QuestionLists from '../Question/QuestionLists';
 import examService from '../../services/examService';
 import { useAuth } from '../../context/AuthContext';
+import { PageLoader } from '../common/Loaders';
 
 const STEPS = [
   { id: 1, title: 'Basic Details', icon: FaClock },
@@ -33,11 +34,12 @@ export default function CreateExam({ render }) {
   const bulkEmailsRef = useRef(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [bulkEmailText, setBulkEmailText] = useState('');
-  const [errors, setErrors] = useState({});
+const [errors, setErrors] = useState({});
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingExamId, setEditingExamId] = useState(null);
   const [editingQuestionIndex, setEditingQuestionIndex] = useState(null);
   const [editingQuestion, setEditingQuestion] = useState(null);
+  const [isFetching, setIsFetching] = useState(false);
   
   // Submission states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -125,8 +127,9 @@ export default function CreateExam({ render }) {
       return;
     }
 
-    const loadExam = async () => {
+const loadExam = async () => {
       try {
+        setIsFetching(true);
         const exam = await examService.getExamById(examId);
         if (!exam || exam.status !== 'draft') {
           alert('Only draft exams can be edited.');
@@ -151,7 +154,7 @@ export default function CreateExam({ render }) {
           questions: mappedQuestions
         }));
 
-        setIsEditMode(true);
+setIsEditMode(true);
         setEditingExamId(examId);
       } catch (error) {
         console.error('Error loading exam for edit:', error);
@@ -160,6 +163,8 @@ export default function CreateExam({ render }) {
         if (render) {
           render('My Exams');
         }
+      } finally {
+        setIsFetching(false);
       }
     };
 
@@ -1174,6 +1179,10 @@ export default function CreateExam({ render }) {
         return null;
     }
   };
+
+if (isFetching) {
+    return <PageLoader label="Loading exam for editing..." />;
+  }
 
   return (
     <div className="p-4 sm:p-6 flex-1 min-w-0 w-full bg-gray-50 min-h-screen">

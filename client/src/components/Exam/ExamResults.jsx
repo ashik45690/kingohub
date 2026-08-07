@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import submissionService from '../../services/submissionService';
 import BackButton from '../common/BackButton';
+import { PageLoader, FadeIn, Skeleton } from '../common/Loaders';
 
 export default function ExamResults() {
 
@@ -164,19 +165,12 @@ export default function ExamResults() {
     navigate('/dashboard');
   };
 
-  if (loading || !result) {
-    return (
-      <div className="p-6 flex-1 bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-gray-600">Loading results...</p>
-        </div>
-      </div>
-    );
+if (loading || !result) {
+    return <PageLoader label="Loading results..." />;
   }
 
   return (
-    <div className="p-4 sm:p-6 flex-1 bg-gray-50 min-h-screen overflow-x-hidden">
+    <FadeIn className="p-4 sm:p-6 flex-1 bg-gray-50 min-h-screen overflow-x-hidden">
       {/* Header */}
       <div className="mb-6">
         <BackButton
@@ -360,6 +354,6 @@ export default function ExamResults() {
           </div>
         </div>
       </div>
-    </div>
+    </FadeIn>
   );
 }

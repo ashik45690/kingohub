@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FaGraduationCap, FaCheckCircle, FaTimesCircle, FaArrowLeft } from 'react-icons/fa';
 import submissionService from '../../services/submissionService';
+import { PageLoader, FadeIn } from '../common/Loaders';
 
 export default function GradeSubmissions({ examId, onBack }) {
   const [submissions, setSubmissions] = useState([]);
@@ -56,7 +57,7 @@ export default function GradeSubmissions({ examId, onBack }) {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-premium">Loading submissions...</div>;
+if (loading) return <PageLoader label="Loading submissions..." />;
 
 if (selectedSubmission) {
     return (
@@ -115,7 +116,7 @@ if (selectedSubmission) {
   }
 
   return (
-    <div className="p-4 sm:p-6 bg-white rounded-xl shadow-lg text-premium min-w-0">
+    <FadeIn className="p-4 sm:p-6 bg-white rounded-xl shadow-lg text-premium min-w-0">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Exam Submissions</h2>
         <button onClick={onBack} className="text-gray-500 hover:text-gray-700 font-medium">Back to Exams</button>
@@ -167,9 +168,9 @@ if (selectedSubmission) {
                 <td colSpan="4" className="px-6 py-10 text-center text-gray-400 italic">No submissions yet.</td>
               </tr>
             )}
-          </tbody>
+</tbody>
         </table>
       </div>
-    </div>
+    </FadeIn>
   );
 }
